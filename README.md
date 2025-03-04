@@ -2,10 +2,16 @@
 
 A task management system for AI-driven development with Claude, designed to work seamlessly with Cursor AI.
 
+## Requirements
+
+- Node.js 14.0.0 or higher
+- Anthropic API key (Claude API)
+- Anthropic SDK version 0.39.0 or higher
+
 ## Installation
 
 ```bash
-npm install -g claude-task-master
+npm install claude-task-master
 ```
 
 ## Usage
@@ -13,25 +19,15 @@ npm install -g claude-task-master
 ### Initialize a new project
 
 ```bash
-# Navigate to your project directory
-mkdir my-new-project
-cd my-new-project
-
-# Initialize the project
-claude-task-init
+npx claude-task-init
 ```
 
-This will create the necessary file structure for your project, including:
+This will prompt you for project details and set up a new project with the necessary files and structure.
 
-- `.cursor/rules/dev_workflow.mdc` - Cursor rules for AI-driven development
-- `scripts/dev.js` - Task management script
-- `scripts/README.md` - Documentation for the script
-- `scripts/example_prd.txt` - Example PRD template
-- `.env.example` - Example environment variables
-- `.gitignore` - Git ignore file
-- `package.json` - Project configuration
-- `tasks.json` - Empty tasks file
-- `tasks/` - Directory for task files
+### Important Notes
+
+1. This package uses ES modules. Your package.json should include `"type": "module"`.
+2. The Anthropic SDK version should be 0.39.0 or higher.
 
 ## Integrating with Cursor AI
 

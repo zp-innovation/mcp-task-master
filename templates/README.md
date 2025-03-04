@@ -34,6 +34,12 @@ This project uses the Claude Task Master system to manage development tasks in a
    npm run generate
    ```
 
+### Important Notes
+
+1. This project uses ES modules. The package.json includes `"type": "module"`.
+2. The Anthropic SDK version should be 0.39.0 or higher.
+3. If you encounter JSON parsing errors, make sure your Anthropic API key is valid and your environment is set up correctly.
+
 ## Integrating with Cursor AI
 
 This project includes Cursor AI integration through the `.cursor/rules/dev_workflow.mdc` file, which provides the AI with knowledge about the task management system.

@@ -42,6 +42,11 @@
 import fs from 'fs';
 import path from 'path';
 import dotenv from 'dotenv';
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 // Load environment variables from .env file
 dotenv.config();
@@ -169,9 +174,17 @@ async function callClaude(prdContent, prdPath, numTasks) {
   log('debug', `Response length: ${textContent.length} characters`);
   
   try {
-    // Try to parse the response as JSON
+    // Check if the response is wrapped in a Markdown code block and extract the JSON
     log('info', "Parsing response as JSON...");
-    const parsedJson = JSON.parse(textContent);
+    let jsonText = textContent;
+    const codeBlockMatch = textContent.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
+    if (codeBlockMatch) {
+      log('debug', "Detected JSON wrapped in Markdown code block, extracting...");
+      jsonText = codeBlockMatch[1];
+    }
+    
+    // Try to parse the response as JSON
+    const parsedJson = JSON.parse(jsonText);
     log('info', `Successfully parsed JSON with ${parsedJson.tasks?.length || 0} tasks`);
     return parsedJson;
   } catch (error) {

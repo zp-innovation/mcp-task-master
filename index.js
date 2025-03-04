@@ -6,14 +6,22 @@
 // This file serves as the main entry point for the package
 // The primary functionality is provided through the CLI commands
 
+import { fileURLToPath } from 'url';
+import { dirname, resolve } from 'path';
+import { createRequire } from 'module';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+const require = createRequire(import.meta.url);
+
 // Export the path to the dev.js script for programmatic usage
-exports.devScriptPath = require.resolve('./scripts/dev.js');
+export const devScriptPath = resolve(__dirname, './scripts/dev.js');
 
 // Export a function to initialize a new project programmatically
-exports.initProject = async (options = {}) => {
-  const init = require('./scripts/init');
+export const initProject = async (options = {}) => {
+  const init = await import('./scripts/init.js');
   return init.initializeProject(options);
 };
 
 // Export version information
-exports.version = require('./package.json').version; 
+export const version = require('./package.json').version; 

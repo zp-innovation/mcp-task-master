@@ -1,10 +1,11 @@
 {
   "name": "claude-task-master",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "A task management system for AI-driven development with Claude",
   "main": "index.js",
+  "type": "module",
   "bin": {
-    "claude-task-init": "./scripts/init.js"
+    "claude-task-init": "scripts/init.js"
   },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
@@ -23,7 +24,7 @@
   "author": "Eyal Toledano",
   "license": "MIT",
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.10.0",
+    "@anthropic-ai/sdk": "^0.39.0",
     "chalk": "^4.1.2",
     "commander": "^11.1.0",
     "dotenv": "^16.3.1"
@@ -43,6 +44,7 @@
     "scripts/init.js",
     "scripts/dev.js",
     "templates/**",
-    "README.md"
+    "README.md",
+    "index.js"
   ]
 }

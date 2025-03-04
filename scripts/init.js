@@ -1,9 +1,14 @@
 #!/usr/bin/env node
 
-const fs = require('fs');
-const path = require('path');
-const { execSync } = require('child_process');
-const readline = require('readline');
+import fs from 'fs';
+import path from 'path';
+import { execSync } from 'child_process';
+import readline from 'readline';
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 // Create readline interface for user input
 const rl = readline.createInterface({
@@ -143,6 +148,7 @@ function createProjectStructure(projectName, projectDescription, projectVersion,
     version: projectVersion,
     description: projectDescription,
     author: authorName,
+    type: "module",
     scripts: {
       "dev": "node scripts/dev.js",
       "list": "node scripts/dev.js list",
@@ -150,7 +156,7 @@ function createProjectStructure(projectName, projectDescription, projectVersion,
       "parse-prd": "node scripts/dev.js parse-prd"
     },
     dependencies: {
-      "@anthropic-ai/sdk": "^0.10.0",
+      "@anthropic-ai/sdk": "^0.39.0",
       "chalk": "^4.1.2",
       "commander": "^11.1.0",
       "dotenv": "^16.3.1"
@@ -230,7 +236,7 @@ function createProjectStructure(projectName, projectDescription, projectVersion,
 }
 
 // Run the initialization if this script is executed directly
-if (require.main === module) {
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
   (async function main() {
     try {
       await initializeProject();
@@ -242,7 +248,7 @@ if (require.main === module) {
 }
 
 // Export functions for programmatic use
-module.exports = {
+export {
   initializeProject,
   createProjectStructure,
   log
