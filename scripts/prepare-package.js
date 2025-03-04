@@ -56,44 +56,11 @@ function ensureExecutable(filePath) {
   return true;
 }
 
-// Function to sync files from source to templates
+// Function to sync template files
 function syncTemplateFiles() {
-  // Define files to sync in format: [source, target]
-  const filesToSync = [
-    // Scripts
-    ['scripts/dev.js', 'templates/dev.js'],
-    
-    // Documentation files
-    ['README.md', 'templates/README.md'],
-    ['scripts/README.md', 'templates/scripts_README.md'],
-    
-    // Other files that might need syncing
-    // Add more files here as needed
-  ];
-  
-  let allSynced = true;
-  const rootDir = path.join(__dirname, '..');
-  
-  for (const [source, target] of filesToSync) {
-    const sourcePath = path.join(rootDir, source);
-    const targetPath = path.join(rootDir, target);
-    
-    try {
-      if (fileExists(sourcePath)) {
-        log('info', `Syncing ${source} to ${target}...`);
-        fs.copyFileSync(sourcePath, targetPath);
-        log('success', `Successfully synced ${source} to ${target}`);
-      } else {
-        log('error', `Source file ${source} does not exist`);
-        allSynced = false;
-      }
-    } catch (error) {
-      log('error', `Failed to sync ${source} to ${target}:`, error.message);
-      allSynced = false;
-    }
-  }
-  
-  return allSynced;
+  // We no longer need to sync files since we're using them directly
+  log('info', 'Template syncing has been deprecated - using source files directly');
+  return true;
 }
 
 // Main function to prepare the package
@@ -101,19 +68,17 @@ function preparePackage() {
   const rootDir = path.join(__dirname, '..');
   log('info', `Preparing package in ${rootDir}`);
   
-  // Sync template files to ensure templates have the latest versions
-  log('info', 'Syncing template files...');
-  if (!syncTemplateFiles()) {
-    log('warn', 'Some template files could not be synced. Continuing with preparation...');
-  }
-  
   // Check for required files
   const requiredFiles = [
     'package.json',
     'README.md',
     'index.js',
     'scripts/init.js',
-    'scripts/dev.js'
+    'scripts/dev.js',
+    'assets/env.example',
+    'assets/gitignore',
+    'assets/example_prd.txt',
+    '.cursor/rules/dev_workflow.mdc'
   ];
   
   let allFilesExist = true;
@@ -146,38 +111,6 @@ function preparePackage() {
   
   if (!allScriptsExecutable) {
     log('warn', 'Some scripts could not be made executable. This may cause issues.');
-  }
-  
-  // Check templates directory
-  const templatesDir = path.join(rootDir, 'templates');
-  if (!fileExists(templatesDir)) {
-    log('error', 'Templates directory does not exist');
-    process.exit(1);
-  }
-  
-  // Check template files
-  const requiredTemplates = [
-    'README.md',
-    'env.example',
-    'gitignore',
-    'dev_workflow.mdc',
-    'dev.js',
-    'scripts_README.md',
-    'example_prd.txt'
-  ];
-  
-  let allTemplatesExist = true;
-  for (const template of requiredTemplates) {
-    const templatePath = path.join(templatesDir, template);
-    if (!fileExists(templatePath)) {
-      log('error', `Required template ${template} does not exist`);
-      allTemplatesExist = false;
-    }
-  }
-  
-  if (!allTemplatesExist) {
-    log('error', 'Some required templates are missing. Package preparation failed.');
-    process.exit(1);
   }
   
   // Run npm pack to test package creation

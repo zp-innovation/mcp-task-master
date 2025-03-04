@@ -72,9 +72,39 @@ function ensureDirectoryExists(dirPath) {
 
 // Function to copy a file from the package to the target directory
 function copyTemplateFile(templateName, targetPath, replacements = {}) {
-  // Get the template content from the templates directory
-  const templatePath = path.join(__dirname, '..', 'templates', templateName);
-  let content = fs.readFileSync(templatePath, 'utf8');
+  // Get the file content from the appropriate source directory
+  let sourcePath;
+  
+  // Map template names to their actual source paths
+  switch(templateName) {
+    case 'dev.js':
+      sourcePath = path.join(__dirname, 'dev.js');
+      break;
+    case 'scripts_README.md':
+      sourcePath = path.join(__dirname, 'README.md');
+      break;
+    case 'dev_workflow.mdc':
+      sourcePath = path.join(__dirname, '..', '.cursor', 'rules', 'dev_workflow.mdc');
+      break;
+    case 'README.md':
+      sourcePath = path.join(__dirname, '..', 'README.md');
+      break;
+    default:
+      // For other files like env.example, gitignore, etc. that don't have direct equivalents
+      sourcePath = path.join(__dirname, '..', 'assets', templateName);
+  }
+  
+  // Check if the source file exists
+  if (!fs.existsSync(sourcePath)) {
+    // Fall back to templates directory for files that might not have been moved yet
+    sourcePath = path.join(__dirname, '..', 'assets', templateName);
+    if (!fs.existsSync(sourcePath)) {
+      log('error', `Source file not found: ${sourcePath}`);
+      return;
+    }
+  }
+  
+  let content = fs.readFileSync(sourcePath, 'utf8');
   
   // Replace placeholders with actual values
   Object.entries(replacements).forEach(([key, value]) => {
