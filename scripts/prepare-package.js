@@ -56,10 +56,56 @@ function ensureExecutable(filePath) {
   return true;
 }
 
+// Function to sync files from source to templates
+function syncTemplateFiles() {
+  // Define files to sync in format: [source, target]
+  const filesToSync = [
+    // Scripts
+    ['scripts/dev.js', 'templates/dev.js'],
+    
+    // Documentation files
+    ['README.md', 'templates/README.md'],
+    ['scripts/README.md', 'templates/scripts_README.md'],
+    
+    // Other files that might need syncing
+    // Add more files here as needed
+  ];
+  
+  let allSynced = true;
+  const rootDir = path.join(__dirname, '..');
+  
+  for (const [source, target] of filesToSync) {
+    const sourcePath = path.join(rootDir, source);
+    const targetPath = path.join(rootDir, target);
+    
+    try {
+      if (fileExists(sourcePath)) {
+        log('info', `Syncing ${source} to ${target}...`);
+        fs.copyFileSync(sourcePath, targetPath);
+        log('success', `Successfully synced ${source} to ${target}`);
+      } else {
+        log('error', `Source file ${source} does not exist`);
+        allSynced = false;
+      }
+    } catch (error) {
+      log('error', `Failed to sync ${source} to ${target}:`, error.message);
+      allSynced = false;
+    }
+  }
+  
+  return allSynced;
+}
+
 // Main function to prepare the package
 function preparePackage() {
   const rootDir = path.join(__dirname, '..');
   log('info', `Preparing package in ${rootDir}`);
+  
+  // Sync template files to ensure templates have the latest versions
+  log('info', 'Syncing template files...');
+  if (!syncTemplateFiles()) {
+    log('warn', 'Some template files could not be synced. Continuing with preparation...');
+  }
   
   // Check for required files
   const requiredFiles = [
