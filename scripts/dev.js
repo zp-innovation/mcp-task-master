@@ -428,13 +428,26 @@ async function updateTasks(tasksPath, fromId, prompt) {
     log('error', "Invalid or missing tasks.json.");
     process.exit(1);
   }
+
   log('info', `Updating tasks from ID >= ${fromId} with prompt: ${prompt}`);
 
-  // In real usage, you'd feed data.tasks + prompt to an LLM. We'll just do a naive approach:
-  data.tasks.forEach(task => {
-    if (task.id >= fromId && task.status !== "done") {
-      task.description += ` [UPDATED: ${prompt}]`;
-    }
+  const tasksToUpdate = data.tasks.filter(task => task.id >= fromId && task.status !== "done");
+
+  const claudeResponse = await anthropic.messages.create({
+    max_tokens: CONFIG.maxTokens,
+    model: CONFIG.model,
+    temperature: CONFIG.temperature,
+    messages: [
+      { role: "user", content: `Update these tasks based on the following insight: ${prompt}\nTasks: ${JSON.stringify(tasksToUpdate, null, 2)}` }
+    ],
+    system: "You are a helpful assistant that updates tasks based on provided insights. Return only the updated tasks as a JSON array."
+  });
+
+  const updatedTasks = JSON.parse(claudeResponse.content[0].text);
+
+  data.tasks = data.tasks.map(task => {
+    const updatedTask = updatedTasks.find(t => t.id === task.id);
+    return updatedTask || task;
   });
 
   writeJSON(tasksPath, data);
