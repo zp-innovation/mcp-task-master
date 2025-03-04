@@ -1,0 +1,47 @@
+<context>
+# Overview  
+[Provide a high-level overview of your product here. Explain what problem it solves, who it's for, and why it's valuable.]
+
+# Core Features  
+[List and describe the main features of your product. For each feature, include:
+- What it does
+- Why it's important
+- How it works at a high level]
+
+# User Experience  
+[Describe the user journey and experience. Include:
+- User personas
+- Key user flows
+- UI/UX considerations]
+
+# Technical Architecture  
+[Outline the technical implementation details:
+- System components
+- Data models
+- APIs and integrations
+- Infrastructure requirements]
+
+# Development Roadmap  
+[Break down the development process into phases:
+- MVP requirements
+- Future enhancements
+- Timeline estimates]
+
+# Success Metrics  
+[Define how success will be measured:
+- Key performance indicators
+- User adoption metrics
+- Business goals]
+
+# Risks and Mitigations  
+[Identify potential risks and how they'll be addressed:
+- Technical challenges
+- Market risks
+- Resource constraints]
+
+# Appendix  
+[Include any additional information:
+- Research findings
+- Competitive analysis
+- Technical specifications]
+</context> 

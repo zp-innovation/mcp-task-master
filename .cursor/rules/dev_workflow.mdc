@@ -1,0 +1,267 @@
+---
+description: guide the Cursor Agent in using the meta-development script (scripts/dev.js). It also defines the overall workflow for reading, updating, and generating tasks during AI-driven development.
+globs: scripts/dev.js, tasks.json, tasks/*.txt
+alwaysApply: true
+---
+rules:
+  - name: "Meta Development Workflow for Cursor Agent"
+    description: >
+      Provides comprehensive guidelines on how the agent (Cursor) should coordinate
+      with the meta task script in scripts/dev.js. The agent will call
+      these commands at various points in the coding process to keep
+      tasks.json up to date and maintain a single source of truth for development tasks.
+    triggers:
+      # Potential triggers or states in Cursor where these rules apply.
+      # You may list relevant event names, e.g., "onTaskCompletion" or "onUserCommand"
+      - always
+    steps:
+      - "**Initial Setup**: If starting a new project with a PRD document, run `node scripts/dev.js parse-prd --input=<prd-file.txt>` to generate the initial tasks.json file. This will create a structured task list with IDs, titles, descriptions, dependencies, priorities, and test strategies."
+      
+      - "**Task Discovery**: When a coding session begins, call `node scripts/dev.js list` to see the current tasks, their status, and IDs. This provides a quick overview of all tasks and their current states (pending, done, deferred)."
+      
+      - "**Task Selection**: Select the next pending task based on these criteria:
+        1. Dependencies: Only select tasks whose dependencies are marked as 'done'
+        2. Priority: Choose higher priority tasks first ('high' > 'medium' > 'low')
+        3. ID order: When priorities are equal, select the task with the lowest ID
+        If multiple tasks are eligible, present options to the user for selection."
+      
+      - "**Task Clarification**: If a task description is unclear or lacks detail:
+        1. Check if a corresponding task file exists in the tasks/ directory (e.g., task_001.txt)
+        2. If more information is needed, ask the user for clarification
+        3. If architectural changes have occurred, run `node scripts/dev.js update --from=<id> --prompt=\"<new architectural context>\"` to update the task and all subsequent tasks"
+      
+      - "**Task Breakdown**: For complex tasks that need to be broken down into smaller steps:
+        1. Use `node scripts/dev.js expand --id=<id> --subtasks=<number>` to generate detailed subtasks
+        2. Optionally provide additional context with `--prompt=\"<context>\"` to guide subtask generation
+        3. Review the generated subtasks and adjust if necessary
+        4. For multiple tasks, use `--all` flag to expand all pending tasks that don't have subtasks"
+      
+      - "**Task Implementation**: Implement the code necessary for the chosen task. Follow these guidelines:
+        1. Reference the task's 'details' section for implementation specifics
+        2. Consider dependencies on previous tasks when implementing
+        3. Follow the project's coding standards and patterns
+        4. Create appropriate tests based on the task's 'testStrategy' field"
+      
+      - "**Task Verification**: Before marking a task as done, verify it according to:
+        1. The task's specified 'testStrategy'
+        2. Any automated tests in the codebase
+        3. Manual verification if required
+        4. Code quality standards (linting, formatting, etc.)"
+      
+      - "**Task Completion**: When a task is completed and verified, run `node scripts/dev.js set-status --id=<id> --status=done` to mark it as done in tasks.json. This ensures the task tracking remains accurate."
+      
+      - "**Implementation Drift Handling**: If during implementation, you discover that:
+        1. The current approach differs significantly from what was planned
+        2. Future tasks need to be modified due to current implementation choices
+        3. New dependencies or requirements have emerged
+        
+        Then call `node scripts/dev.js update --from=<futureTaskId> --prompt=\"Detailed explanation of architectural or implementation changes...\"` to rewrite or re-scope subsequent tasks in tasks.json."
+      
+      - "**Task File Generation**: After any updates to tasks.json (status changes, task updates), run `node scripts/dev.js generate` to regenerate the individual task_XXX.txt files in the tasks/ folder. This ensures that task files are always in sync with tasks.json."
+      
+      - "**Task Status Management**: Use appropriate status values when updating tasks:
+        1. 'pending': Tasks that are ready to be worked on
+        2. 'done': Tasks that have been completed and verified
+        3. 'deferred': Tasks that have been postponed to a later time
+        4. Any other custom status that might be relevant to the project"
+      
+      - "**Dependency Management**: When selecting tasks, always respect the dependency chain:
+        1. Never start a task whose dependencies are not marked as 'done'
+        2. If a dependency task is deferred, consider whether dependent tasks should also be deferred
+        3. If dependency relationships change during development, update tasks.json accordingly"
+      
+      - "**Progress Reporting**: Periodically (at the beginning of sessions or after completing significant tasks), run `node scripts/dev.js list` to provide the user with an updated view of project progress."
+      
+      - "**Task File Format**: When reading task files, understand they follow this structure:
+        ```
+        # Task ID: <id>
+        # Title: <title>
+        # Status: <status>
+        # Dependencies: <comma-separated list of dependency IDs>
+        # Priority: <priority>
+        # Description: <brief description>
+        # Details:
+        <detailed implementation notes>
+        
+        # Test Strategy:
+        <verification approach>
+        ```"
+      
+      - "**Continuous Workflow**: Repeat this process until all tasks relevant to the current development phase are completed. Always maintain tasks.json as the single source of truth for development progress."
+
+  - name: "Meta-Development Script Command Reference"
+    description: >
+      Detailed reference for all commands available in the scripts/dev.js meta-development script.
+      This helps the agent understand the full capabilities of the script and use it effectively.
+    triggers:
+      - always
+    commands:
+      - name: "parse-prd"
+        syntax: "node scripts/dev.js parse-prd --input=<prd-file.txt>"
+        description: "Parses a PRD document and generates a tasks.json file with structured tasks. This initializes the task tracking system."
+        parameters:
+          - "--input=<file>: Path to the PRD text file (default: sample-prd.txt)"
+        example: "node scripts/dev.js parse-prd --input=requirements.txt"
+        notes: "This will overwrite any existing tasks.json file. Use with caution on established projects."
+      
+      - name: "update"
+        syntax: "node scripts/dev.js update --from=<id> --prompt=\"<prompt>\""
+        description: "Updates tasks with ID >= the specified ID based on the provided prompt. Useful for handling implementation drift or architectural changes."
+        parameters:
+          - "--from=<id>: The task ID from which to start updating (required)"
+          - "--prompt=\"<text>\": The prompt explaining the changes or new context (required)"
+        example: "node scripts/dev.js update --from=4 --prompt=\"Now we are using Express instead of Fastify.\""
+        notes: "Only updates tasks that aren't marked as 'done'. Completed tasks remain unchanged."
+      
+      - name: "generate"
+        syntax: "node scripts/dev.js generate"
+        description: "Generates individual task files in the tasks/ directory based on the current state of tasks.json."
+        parameters: "None"
+        example: "node scripts/dev.js generate"
+        notes: "Overwrites existing task files. Creates the tasks/ directory if it doesn't exist."
+      
+      - name: "set-status"
+        syntax: "node scripts/dev.js set-status --id=<id> --status=<status>"
+        description: "Updates the status of a specific task in tasks.json."
+        parameters:
+          - "--id=<id>: The ID of the task to update (required)"
+          - "--status=<status>: The new status (e.g., 'done', 'pending', 'deferred') (required)"
+        example: "node scripts/dev.js set-status --id=3 --status=done"
+        notes: "Common status values are 'done', 'pending', and 'deferred', but any string is accepted."
+      
+      - name: "list"
+        syntax: "node scripts/dev.js list"
+        description: "Lists all tasks in tasks.json with their IDs, titles, and current status."
+        parameters: "None"
+        example: "node scripts/dev.js list"
+        notes: "Provides a quick overview of project progress. Use this at the start of coding sessions."
+      
+      - name: "expand"
+        syntax: "node scripts/dev.js expand --id=<id> [--subtasks=<number>] [--prompt=\"<context>\"]"
+        description: "Expands a task with subtasks for more detailed implementation. Can also expand all tasks with the --all flag."
+        parameters:
+          - "--id=<id>: The ID of the task to expand (required unless using --all)"
+          - "--all: Expand all pending tasks that don't have subtasks"
+          - "--subtasks=<number>: Number of subtasks to generate (default: 3)"
+          - "--prompt=\"<text>\": Additional context to guide subtask generation"
+          - "--force: When used with --all, regenerates subtasks even for tasks that already have them"
+        example: "node scripts/dev.js expand --id=3 --subtasks=5 --prompt=\"Focus on security aspects\""
+        notes: "Tasks marked as 'done' or 'completed' are always skipped. By default, tasks that already have subtasks are skipped unless --force is used."
+
+  - name: "Task Structure Reference"
+    description: >
+      Details the structure of tasks in tasks.json to help the agent understand
+      and work with the task data effectively.
+    triggers:
+      - always
+    task_fields:
+      - name: "id"
+        type: "number"
+        description: "Unique identifier for the task. Used in commands and for tracking dependencies."
+        example: "1"
+      
+      - name: "title"
+        type: "string"
+        description: "Brief, descriptive title of the task."
+        example: "Initialize Repo"
+      
+      - name: "description"
+        type: "string"
+        description: "Concise description of what the task involves."
+        example: "Create a new repository, set up initial structure."
+      
+      - name: "status"
+        type: "string"
+        description: "Current state of the task. Common values: 'pending', 'done', 'deferred'."
+        example: "pending"
+      
+      - name: "dependencies"
+        type: "array of numbers"
+        description: "IDs of tasks that must be completed before this task can be started."
+        example: "[1, 2]"
+      
+      - name: "priority"
+        type: "string"
+        description: "Importance level of the task. Common values: 'high', 'medium', 'low'."
+        example: "high"
+      
+      - name: "details"
+        type: "string"
+        description: "In-depth instructions, references, or context for implementing the task."
+        example: "Use GitHub client ID/secret, handle callback, set session token."
+      
+      - name: "testStrategy"
+        type: "string"
+        description: "Approach for verifying the task has been completed correctly."
+        example: "Deploy and call endpoint to confirm 'Hello World' response."
+      
+      - name: "subtasks"
+        type: "array of objects"
+        description: "List of smaller, more specific tasks that make up the main task."
+        example: "[{\"id\": 1, \"title\": \"Configure OAuth\", \"description\": \"...\", \"status\": \"pending\", \"dependencies\": [], \"acceptanceCriteria\": \"...\"}]"
+
+  - name: "Environment Variables Reference"
+    description: >
+      Details the environment variables that can be used to configure the dev.js script.
+      These variables should be set in a .env file at the root of the project.
+    triggers:
+      - always
+    variables:
+      - name: "ANTHROPIC_API_KEY"
+        required: true
+        description: "Your Anthropic API key for Claude. Required for task generation and expansion."
+        example: "ANTHROPIC_API_KEY=sk-ant-api03-..."
+      
+      - name: "MODEL"
+        required: false
+        default: "claude-3-7-sonnet-20250219"
+        description: "Specify which Claude model to use for task generation and expansion."
+        example: "MODEL=claude-3-opus-20240229"
+      
+      - name: "MAX_TOKENS"
+        required: false
+        default: "4000"
+        description: "Maximum tokens for model responses. Higher values allow for more detailed task generation."
+        example: "MAX_TOKENS=8000"
+      
+      - name: "TEMPERATURE"
+        required: false
+        default: "0.7"
+        description: "Temperature for model responses. Higher values (0.0-1.0) increase creativity but may reduce consistency."
+        example: "TEMPERATURE=0.5"
+      
+      - name: "DEBUG"
+        required: false
+        default: "false"
+        description: "Enable debug logging. When true, detailed logs are written to dev-debug.log."
+        example: "DEBUG=true"
+      
+      - name: "LOG_LEVEL"
+        required: false
+        default: "info"
+        description: "Log level for console output. Options: debug, info, warn, error."
+        example: "LOG_LEVEL=debug"
+      
+      - name: "DEFAULT_SUBTASKS"
+        required: false
+        default: "3"
+        description: "Default number of subtasks when expanding a task."
+        example: "DEFAULT_SUBTASKS=5"
+      
+      - name: "DEFAULT_PRIORITY"
+        required: false
+        default: "medium"
+        description: "Default priority for generated tasks. Options: high, medium, low."
+        example: "DEFAULT_PRIORITY=high"
+      
+      - name: "PROJECT_NAME"
+        required: false
+        default: "MCP SaaS MVP"
+        description: "Override default project name in tasks.json metadata."
+        example: "PROJECT_NAME=My Awesome Project"
+      
+      - name: "PROJECT_VERSION"
+        required: false
+        default: "1.0.0"
+        description: "Override default version in tasks.json metadata."
+        example: "PROJECT_VERSION=2.1.0"
