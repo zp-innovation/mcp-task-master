@@ -769,31 +769,61 @@ Then continue with Subtask ${nextSubtaskId + 1}, and so on.
 
   log('info', "Calling Claude to generate subtasks...");
   
-  const response = await anthropic.messages.create({
-    max_tokens: CONFIG.maxTokens,
-    model: CONFIG.model,
-    temperature: CONFIG.temperature,
-    messages: [
-      { 
-        role: "user", 
-        content: prompt 
+  // Start loading indicator
+  const loadingIndicator = startLoadingIndicator("Waiting for Claude to generate subtasks...");
+  
+  let fullResponse = '';
+  let streamingInterval = null;
+
+  try {
+    const stream = await anthropic.messages.create({
+      max_tokens: CONFIG.maxTokens,
+      model: CONFIG.model,
+      temperature: CONFIG.temperature,
+      messages: [
+        { 
+          role: "user", 
+          content: prompt 
+        }
+      ],
+      system: "You are a helpful assistant that generates detailed subtasks for software development tasks. Your subtasks should be specific, actionable, and help accomplish the main task. Format each subtask with a title, description, dependencies, and acceptance criteria.",
+      stream: true
+    });
+    
+    // Update loading indicator to show streaming progress
+    let dotCount = 0;
+    streamingInterval = setInterval(() => {
+      readline.cursorTo(process.stdout, 0);
+      process.stdout.write(`Receiving streaming response from Claude${'.'.repeat(dotCount)}`);
+      dotCount = (dotCount + 1) % 4;
+    }, 500);
+    
+    // Process the stream
+    for await (const chunk of stream) {
+      if (chunk.type === 'content_block_delta' && chunk.delta.text) {
+        fullResponse += chunk.delta.text;
       }
-    ],
-    system: "You are a helpful assistant that generates detailed subtasks for software development tasks. Your subtasks should be specific, actionable, and help accomplish the main task. Format each subtask with a title, description, dependencies, and acceptance criteria."
-  });
-  
-  log('info', "Received response from Claude API!");
-  
-  // Extract the text content from the response
-  const textContent = response.content[0].text;
-  
-  // Log the first part of the response for debugging
-  log('debug', "Response preview:", textContent.substring(0, 200) + "...");
-  
-  // Parse the subtasks from the text response
-  const subtasks = parseSubtasksFromText(textContent, nextSubtaskId, numSubtasks);
-  
-  return subtasks;
+    }
+    
+    clearInterval(streamingInterval);
+    
+    // Stop loading indicator
+    stopLoadingIndicator(loadingIndicator);
+    log('info', "Received complete response from Claude API!");
+    
+    // Log the first part of the response for debugging
+    log('debug', "Response preview:", fullResponse.substring(0, 200) + "...");
+    
+    // Parse the subtasks from the text response
+    const subtasks = parseSubtasksFromText(fullResponse, nextSubtaskId, numSubtasks);
+    
+    return subtasks;
+  } catch (error) {
+    if (streamingInterval) clearInterval(streamingInterval);
+    stopLoadingIndicator(loadingIndicator);
+    log('error', "Error during streaming response:", error);
+    throw error;
+  }
 }
 
 //
