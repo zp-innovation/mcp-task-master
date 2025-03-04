@@ -15,7 +15,8 @@
  *      -> Generates per-task files (e.g., task_001.txt) from tasks.json
  *
  *   4) set-status --id=4 --status=done
- *      -> Updates a single task's status to done (or pending, deferred, etc.).
+ *      -> Updates a single task's status to done (or pending, deferred, in-progress, etc.).
+ *      -> Supports comma-separated IDs for updating multiple tasks: --id=1,2,3,1.1,1.2
  *
  *   5) list
  *      -> Lists tasks in a brief console view (ID, title, status).
@@ -302,13 +303,65 @@ function generateTaskFiles(tasksPath, outputDir) {
 //
 // 4) set-status
 //
-function setTaskStatus(tasksPath, taskId, newStatus) {
+function setTaskStatus(tasksPath, taskIdInput, newStatus) {
+  // For recursive calls with multiple IDs, we need to read the latest data each time
   const data = readJSON(tasksPath);
   if (!data || !data.tasks) {
     log('error', "No valid tasks found.");
     process.exit(1);
   }
 
+  // Handle multiple task IDs (comma-separated)
+  if (typeof taskIdInput === 'string' && taskIdInput.includes(',')) {
+    const taskIds = taskIdInput.split(',').map(id => id.trim());
+    log('info', `Processing multiple tasks: ${taskIds.join(', ')}`);
+    
+    // Process each task ID individually
+    for (const taskId of taskIds) {
+      // Create a new instance for each task to ensure we're working with fresh data
+      setTaskStatus(tasksPath, taskId, newStatus);
+    }
+    
+    return;
+  }
+
+  // Convert numeric taskId to number if it's not a subtask ID
+  const taskId = (!isNaN(taskIdInput) && !String(taskIdInput).includes('.')) 
+    ? parseInt(taskIdInput, 10) 
+    : taskIdInput;
+
+  // Check if this is a subtask ID (e.g., "1.1")
+  if (typeof taskId === 'string' && taskId.includes('.')) {
+    const [parentIdStr, subtaskIdStr] = taskId.split('.');
+    const parentId = parseInt(parentIdStr, 10);
+    const subtaskId = parseInt(subtaskIdStr, 10);
+    
+    const parentTask = data.tasks.find(t => t.id === parentId);
+    
+    if (!parentTask) {
+      log('error', `Parent task with ID=${parentId} not found.`);
+      process.exit(1);
+    }
+    
+    if (!parentTask.subtasks || parentTask.subtasks.length === 0) {
+      log('error', `Parent task with ID=${parentId} has no subtasks.`);
+      process.exit(1);
+    }
+    
+    const subtask = parentTask.subtasks.find(st => st.id === subtaskId);
+    if (!subtask) {
+      log('error', `Subtask with ID=${subtaskId} not found in parent task ID=${parentId}.`);
+      process.exit(1);
+    }
+    
+    const oldStatus = subtask.status;
+    subtask.status = newStatus;
+    writeJSON(tasksPath, data);
+    log('info', `Subtask ${parentId}.${subtaskId} status changed from '${oldStatus}' to '${newStatus}'.`);
+    return;
+  }
+
+  // Handle regular task ID
   const task = data.tasks.find(t => t.id === taskId);
   if (!task) {
     log('error', `Task with ID=${taskId} not found.`);
@@ -701,11 +754,11 @@ function parseSubtasksFromText(text, startId, expectedCount) {
         process.exit(1);
       }
       if (!statusArg) {
-        log('error', "Missing --status=<newStatus> argument (e.g. done, pending, deferred).");
+        log('error', "Missing --status=<newStatus> argument (e.g., done, pending, deferred, in-progress).");
         process.exit(1);
       }
-      log('info', `Setting task ${idArg} status to "${statusArg}"...`);
-      setTaskStatus(tasksPath, parseInt(idArg, 10), statusArg);
+      log('info', `Setting task(s) ${idArg} status to "${statusArg}"...`);
+      setTaskStatus(tasksPath, idArg, statusArg);
       break;
 
     case 'list':
@@ -744,7 +797,8 @@ Subcommands:
      -> Generates per-task files (e.g., task_001.txt) from tasks.json
 
   4) set-status --id=4 --status=done
-     -> Updates a single task's status to done (or pending, deferred, etc.).
+     -> Updates a single task's status to done (or pending, deferred, in-progress, etc.).
+     -> Supports comma-separated IDs for updating multiple tasks: --id=1,2,3,1.1,1.2
 
   5) list
      -> Lists tasks in a brief console view (ID, title, status).
