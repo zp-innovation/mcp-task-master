@@ -45,6 +45,7 @@ import path from 'path';
 import dotenv from 'dotenv';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
+import readline from 'readline';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -108,9 +109,36 @@ function writeJSON(filepath, data) {
   fs.writeFileSync(filepath, JSON.stringify(data, null, 2), 'utf8');
 }
 
-async function callClaude(prdContent, prdPath, numTasks) {
+// Add a simple loading indicator function
+function startLoadingIndicator(message) {
+  const frames = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
+  let i = 0;
+  
+  process.stdout.write(`${message} `);
+  
+  return setInterval(() => {
+    readline.cursorTo(process.stdout, message.length + 1);
+    process.stdout.write(frames[i]);
+    i = (i + 1) % frames.length;
+  }, 80);
+}
+
+function stopLoadingIndicator(interval) {
+  clearInterval(interval);
+  readline.cursorTo(process.stdout, 0);
+  readline.clearLine(process.stdout, 0);
+}
+
+async function callClaude(prdContent, prdPath, numTasks, retryCount = 0) {
+  const MAX_RETRIES = 3;
+  const INITIAL_BACKOFF_MS = 1000;
+  
   log('info', `Starting Claude API call to process PRD from ${prdPath}...`);
   log('debug', `PRD content length: ${prdContent.length} characters`);
+  
+  // Start loading indicator
+  const loadingMessage = `Waiting for Claude to generate tasks${retryCount > 0 ? ` (retry ${retryCount}/${MAX_RETRIES})` : ''}...`;
+  const loadingIndicator = startLoadingIndicator(loadingMessage);
   
   const TASKS_JSON_TEMPLATE = `
   {
@@ -154,44 +182,155 @@ async function callClaude(prdContent, prdPath, numTasks) {
   }
 
   log('debug', "System prompt:", systemPrompt);
-  log('info', "Sending request to Claude API...");
-  
-  const response = await anthropic.messages.create({
-    max_tokens: CONFIG.maxTokens,
-    model: CONFIG.model,
-    temperature: CONFIG.temperature,
-    messages: [
-      { 
-        role: "user", 
-        content: prdContent 
-      }
-    ],
-    system: systemPrompt
-  });
-  log('info', "Received response from Claude API!");
-
-  // Extract the text content from the response
-  const textContent = response.content[0].text;
-  log('debug', `Response length: ${textContent.length} characters`);
   
   try {
-    // Check if the response is wrapped in a Markdown code block and extract the JSON
-    log('info', "Parsing response as JSON...");
-    let jsonText = textContent;
-    const codeBlockMatch = textContent.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
-    if (codeBlockMatch) {
-      log('debug', "Detected JSON wrapped in Markdown code block, extracting...");
-      jsonText = codeBlockMatch[1];
+    // Calculate appropriate max tokens based on PRD size
+    let maxTokens = CONFIG.maxTokens;
+    // Rough estimate: 1 token ≈ 4 characters
+    const estimatedPrdTokens = Math.ceil(prdContent.length / 4);
+    // Ensure we have enough tokens for the response
+    if (estimatedPrdTokens > maxTokens / 2) {
+      // If PRD is large, increase max tokens if possible
+      const suggestedMaxTokens = Math.min(32000, estimatedPrdTokens * 2);
+      if (suggestedMaxTokens > maxTokens) {
+        log('info', `PRD is large (est. ${estimatedPrdTokens} tokens). Increasing max_tokens to ${suggestedMaxTokens}.`);
+        maxTokens = suggestedMaxTokens;
+      }
     }
     
-    // Try to parse the response as JSON
-    const parsedJson = JSON.parse(jsonText);
-    log('info', `Successfully parsed JSON with ${parsedJson.tasks?.length || 0} tasks`);
-    return parsedJson;
+    log('info', "Sending request to Claude API...");
+    
+    const response = await anthropic.messages.create({
+      max_tokens: maxTokens,
+      model: CONFIG.model,
+      temperature: CONFIG.temperature,
+      messages: [
+        { 
+          role: "user", 
+          content: prdContent 
+        }
+      ],
+      system: systemPrompt
+    });
+    
+    // Stop loading indicator
+    stopLoadingIndicator(loadingIndicator);
+    log('info', "Received response from Claude API!");
+
+    // Extract the text content from the response
+    const textContent = response.content[0].text;
+    log('debug', `Response length: ${textContent.length} characters`);
+    
+    try {
+      // Check if the response is wrapped in a Markdown code block and extract the JSON
+      log('info', "Parsing response as JSON...");
+      let jsonText = textContent;
+      const codeBlockMatch = textContent.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
+      if (codeBlockMatch) {
+        log('debug', "Detected JSON wrapped in Markdown code block, extracting...");
+        jsonText = codeBlockMatch[1];
+      }
+      
+      // Try to parse the response as JSON
+      const parsedJson = JSON.parse(jsonText);
+      
+      // Check if the response seems incomplete (e.g., missing closing brackets)
+      if (!parsedJson.tasks || parsedJson.tasks.length === 0) {
+        log('warn', "Parsed JSON has no tasks. Response may be incomplete.");
+        
+        // If we have a numTasks parameter and it's greater than 5, try again with fewer tasks
+        if (numTasks && numTasks > 5 && retryCount < MAX_RETRIES) {
+          const reducedTasks = Math.max(5, Math.floor(numTasks * 0.7)); // Reduce by 30%, minimum 5
+          log('info', `Retrying with reduced task count: ${reducedTasks} (was ${numTasks})`);
+          return callClaude(prdContent, prdPath, reducedTasks, retryCount + 1);
+        }
+      }
+      
+      log('info', `Successfully parsed JSON with ${parsedJson.tasks?.length || 0} tasks`);
+      return parsedJson;
+    } catch (error) {
+      log('error', "Failed to parse Claude's response as JSON:", error);
+      log('debug', "Raw response:", textContent);
+      
+      // Check if we should retry with different parameters
+      if (retryCount < MAX_RETRIES) {
+        // If we have a numTasks parameter, try again with fewer tasks
+        if (numTasks && numTasks > 3) {
+          const reducedTasks = Math.max(3, Math.floor(numTasks * 0.6)); // Reduce by 40%, minimum 3
+          log('info', `Retrying with reduced task count: ${reducedTasks} (was ${numTasks})`);
+          return callClaude(prdContent, prdPath, reducedTasks, retryCount + 1);
+        } else {
+          // Otherwise, just retry with the same parameters
+          log('info', `Retrying Claude API call (attempt ${retryCount + 1}/${MAX_RETRIES})...`);
+          return callClaude(prdContent, prdPath, numTasks, retryCount + 1);
+        }
+      }
+      
+      throw new Error("Failed to parse Claude's response as JSON after multiple attempts. See console for details.");
+    }
   } catch (error) {
-    log('error', "Failed to parse Claude's response as JSON:", error);
-    log('debug', "Raw response:", textContent);
-    throw new Error("Failed to parse Claude's response as JSON. See console for details.");
+    // Stop loading indicator
+    stopLoadingIndicator(loadingIndicator);
+    
+    log('error', "Error calling Claude API:", error);
+    
+    // Implement exponential backoff for retries
+    if (retryCount < MAX_RETRIES) {
+      const backoffTime = INITIAL_BACKOFF_MS * Math.pow(2, retryCount);
+      log('info', `Retrying in ${backoffTime/1000} seconds (attempt ${retryCount + 1}/${MAX_RETRIES})...`);
+      
+      await new Promise(resolve => setTimeout(resolve, backoffTime));
+      
+      // If we have a numTasks parameter and it's greater than 3, try again with fewer tasks
+      if (numTasks && numTasks > 3) {
+        const reducedTasks = Math.max(3, Math.floor(numTasks * 0.7)); // Reduce by 30%, minimum 3
+        log('info', `Retrying with reduced task count: ${reducedTasks} (was ${numTasks})`);
+        return callClaude(prdContent, prdPath, reducedTasks, retryCount + 1);
+      } else {
+        // Otherwise, just retry with the same parameters
+        return callClaude(prdContent, prdPath, numTasks, retryCount + 1);
+      }
+    }
+    
+    // If we've exhausted all retries, ask the user what to do
+    console.log("\nClaude API call failed after multiple attempts.");
+    console.log("Options:");
+    console.log("1. Retry with the same parameters");
+    console.log("2. Retry with fewer tasks (if applicable)");
+    console.log("3. Abort");
+    
+    const readline = require('readline').createInterface({
+      input: process.stdin,
+      output: process.stdout
+    });
+    
+    return new Promise((resolve, reject) => {
+      readline.question('Enter your choice (1-3): ', async (choice) => {
+        readline.close();
+        
+        switch (choice) {
+          case '1':
+            console.log("Retrying with the same parameters...");
+            resolve(await callClaude(prdContent, prdPath, numTasks, 0)); // Reset retry count
+            break;
+          case '2':
+            if (numTasks && numTasks > 2) {
+              const reducedTasks = Math.max(2, Math.floor(numTasks * 0.5)); // Reduce by 50%, minimum 2
+              console.log(`Retrying with reduced task count: ${reducedTasks} (was ${numTasks})...`);
+              resolve(await callClaude(prdContent, prdPath, reducedTasks, 0)); // Reset retry count
+            } else {
+              console.log("Cannot reduce task count further. Retrying with the same parameters...");
+              resolve(await callClaude(prdContent, prdPath, numTasks, 0)); // Reset retry count
+            }
+            break;
+          case '3':
+          default:
+            console.log("Aborting...");
+            reject(new Error("User aborted after multiple failed attempts"));
+            break;
+        }
+      });
+    });
   }
 }
 
@@ -210,32 +349,38 @@ async function parsePRD(prdPath, tasksPath, numTasks) {
 
   // call claude to generate the tasks.json
   log('info', "Calling Claude to generate tasks from PRD...");
-  const claudeResponse = await callClaude(prdContent, prdPath, numTasks);
-  let tasks = claudeResponse.tasks || [];
-  log('info', `Claude generated ${tasks.length} tasks from the PRD`);
+  
+  try {
+    const claudeResponse = await callClaude(prdContent, prdPath, numTasks);
+    let tasks = claudeResponse.tasks || [];
+    log('info', `Claude generated ${tasks.length} tasks from the PRD`);
 
-  // Limit the number of tasks if specified
-  if (numTasks && numTasks > 0 && numTasks < tasks.length) {
-    log('info', `Limiting to the first ${numTasks} tasks as specified`);
-    tasks = tasks.slice(0, numTasks);
+    // Limit the number of tasks if specified
+    if (numTasks && numTasks > 0 && numTasks < tasks.length) {
+      log('info', `Limiting to the first ${numTasks} tasks as specified`);
+      tasks = tasks.slice(0, numTasks);
+    }
+
+    log('info', "Creating tasks.json data structure...");
+    const data = {
+      meta: {
+        projectName: CONFIG.projectName,
+        version: CONFIG.projectVersion,
+        source: prdPath,
+        description: "Tasks generated from PRD",
+        totalTasksGenerated: claudeResponse.tasks?.length || 0,
+        tasksIncluded: tasks.length
+      },
+      tasks
+    };
+
+    log('info', `Writing ${tasks.length} tasks to ${tasksPath}...`);
+    writeJSON(tasksPath, data);
+    log('info', `Parsed PRD from '${prdPath}' -> wrote ${tasks.length} tasks to '${tasksPath}'.`);
+  } catch (error) {
+    log('error', "Failed to generate tasks:", error.message);
+    process.exit(1);
   }
-
-  log('info', "Creating tasks.json data structure...");
-  const data = {
-    meta: {
-      projectName: CONFIG.projectName,
-      version: CONFIG.projectVersion,
-      source: prdPath,
-      description: "Tasks generated from PRD",
-      totalTasksGenerated: claudeResponse.tasks?.length || 0,
-      tasksIncluded: tasks.length
-    },
-    tasks
-  };
-
-  log('info', `Writing ${tasks.length} tasks to ${tasksPath}...`);
-  writeJSON(tasksPath, data);
-  log('info', `Parsed PRD from '${prdPath}' -> wrote ${tasks.length} tasks to '${tasksPath}'.`);
 }
 
 //
