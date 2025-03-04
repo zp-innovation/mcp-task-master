@@ -198,61 +198,13 @@ async function callClaude(prdContent, prdPath, numTasks, retryCount = 0) {
       }
     }
     
-    // Determine if we should use streaming based on PRD size
-    // For PRDs larger than 20,000 characters (roughly 5,000 tokens), use streaming
-    const useStreaming = prdContent.length > 20000;
+    // Always use streaming to avoid "Streaming is strongly recommended" error
+    log('info', `Using streaming API for PRD processing...`);
+    return await handleStreamingRequest(prdContent, prdPath, numTasks, maxTokens, systemPrompt, loadingIndicator);
     
-    if (useStreaming) {
-      log('info', `Large PRD detected (${prdContent.length} characters). Using streaming API...`);
-      return await handleStreamingRequest(prdContent, prdPath, numTasks, maxTokens, systemPrompt, loadingIndicator);
-    } else {
-      log('info', "Sending request to Claude API...");
-      
-      const response = await anthropic.messages.create({
-        max_tokens: maxTokens,
-        model: CONFIG.model,
-        temperature: CONFIG.temperature,
-        messages: [
-          { 
-            role: "user", 
-            content: prdContent 
-          }
-        ],
-        system: systemPrompt
-      });
-      
-      // Stop loading indicator
-      stopLoadingIndicator(loadingIndicator);
-      log('info', "Received response from Claude API!");
-
-      // Extract the text content from the response
-      const textContent = response.content[0].text;
-      return processClaudeResponse(textContent, numTasks, retryCount, prdContent, prdPath);
-    }
   } catch (error) {
     // Stop loading indicator
     stopLoadingIndicator(loadingIndicator);
-    
-    // Check if this is the streaming recommendation error
-    if (error.message && error.message.includes("Streaming is strongly recommended")) {
-      log('info', "Claude recommends streaming for this large PRD. Switching to streaming mode...");
-      try {
-        // Calculate appropriate max tokens based on PRD size
-        let maxTokens = CONFIG.maxTokens;
-        const estimatedPrdTokens = Math.ceil(prdContent.length / 4);
-        const suggestedMaxTokens = Math.min(32000, estimatedPrdTokens * 2);
-        if (suggestedMaxTokens > maxTokens) {
-          maxTokens = suggestedMaxTokens;
-        }
-        
-        // Restart the loading indicator
-        const newLoadingIndicator = startLoadingIndicator(loadingMessage);
-        return await handleStreamingRequest(prdContent, prdPath, numTasks, maxTokens, systemPrompt, newLoadingIndicator);
-      } catch (streamingError) {
-        log('error', "Error with streaming API call:", streamingError);
-        throw streamingError;
-      }
-    }
     
     log('error', "Error calling Claude API:", error);
     
