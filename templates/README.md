@@ -1,101 +1,202 @@
-# {{projectName}}
-
-{{projectDescription}}
+# Claude Task Master
 
 A task management system for AI-driven development with Claude, designed to work seamlessly with Cursor AI.
 
-## Overview
+## Requirements
 
-This project uses the Claude Task Master system to manage development tasks in an AI-driven workflow. The system revolves around a `tasks.json` file, which holds an up-to-date list of development tasks.
+- Node.js 14.0.0 or higher
+- Anthropic API key (Claude API)
+- Anthropic SDK version 0.39.0 or higher
 
-## Getting Started
+## Installation
 
-1. Install dependencies:
-   ```bash
-   npm install
-   ```
+```bash
+npm install claude-task-master
+```
 
-2. Set up your environment:
-   - Copy `.env.example` to `.env`
-   - Add your Anthropic API key to the `.env` file
+## Usage
 
-3. Parse your PRD to generate tasks:
-   ```bash
-   npm run parse-prd -- --input=your-prd-file.txt
-   ```
+### Initialize a new project
 
-4. View current tasks:
-   ```bash
-   npm run list
-   ```
+```bash
+npx claude-task-init
+```
 
-5. Generate task files:
-   ```bash
-   npm run generate
-   ```
+This will prompt you for project details and set up a new project with the necessary files and structure.
 
 ### Important Notes
 
-1. This project uses ES modules. The package.json includes `"type": "module"`.
+1. This package uses ES modules. Your package.json should include `"type": "module"`.
 2. The Anthropic SDK version should be 0.39.0 or higher.
-3. If you encounter JSON parsing errors, make sure your Anthropic API key is valid and your environment is set up correctly.
+
+## Troubleshooting
+
+### If `npx claude-task-init` doesn't respond:
+
+Try running it with Node directly:
+
+```bash
+node node_modules/claude-task-master/scripts/init.js
+```
+
+Or clone the repository and run:
+
+```bash
+git clone https://github.com/eyaltoledano/claude-task-master.git
+cd claude-task-master
+node scripts/init.js
+```
 
 ## Integrating with Cursor AI
 
-This project includes Cursor AI integration through the `.cursor/rules/dev_workflow.mdc` file, which provides the AI with knowledge about the task management system.
+Claude Task Master is designed to work seamlessly with [Cursor AI](https://www.cursor.so/), providing a structured workflow for AI-driven development.
 
-### Using Cursor Agent Mode
+### Setup with Cursor
 
-1. Open this project in Cursor
-2. Open Cursor's AI chat and switch to Agent mode
-3. The agent will automatically understand the task management workflow
+1. After initializing your project, open it in Cursor
+2. The `.cursor/rules/dev_workflow.mdc` file is automatically loaded by Cursor, providing the AI with knowledge about the task management system
+3. Place your PRD document in the `scripts/` directory (e.g., `scripts/prd.txt`)
+4. Open Cursor's AI chat and switch to Agent mode
 
-### Working with the Agent
+### Initial Task Generation
 
-You can ask the Cursor agent to:
+In Cursor's AI chat, instruct the agent to generate tasks from your PRD:
 
-- **Generate tasks**: "Please parse my PRD at scripts/prd.txt and generate tasks"
-- **List tasks**: "What tasks are available to work on next?"
-- **Implement tasks**: "Let's implement task 3. What does it involve?"
-- **Update task status**: "Task 3 is now complete. Please update its status"
-- **Handle changes**: "We're now using Express instead of Fastify. Update future tasks"
-- **Break down tasks**: "Task 5 seems complex. Can you break it down into subtasks?"
+```
+Please use the dev.js script to parse my PRD and generate tasks. The PRD is located at scripts/prd.txt.
+```
 
-The agent will execute the appropriate commands and guide you through the development process.
+The agent will execute:
+```bash
+node scripts/dev.js parse-prd --input=scripts/prd.txt
+```
 
-## Development Workflow
+This will:
+- Parse your PRD document
+- Generate a structured `tasks.json` file with tasks, dependencies, priorities, and test strategies
+- The agent will understand this process due to the Cursor rules
 
-The development workflow follows these steps:
+### Generate Individual Task Files
 
-1. **Initial Setup**: If starting a new project with a PRD document, run `npm run parse-prd -- --input=<prd-file.txt>` to generate the initial tasks.json file.
+Next, ask the agent to generate individual task files:
 
-2. **Task Discovery**: When a coding session begins, run `npm run list` to see the current tasks, their status, and IDs.
+```
+Please generate individual task files from tasks.json
+```
 
-3. **Task Selection**: Select the next pending task based on these criteria:
-   - Dependencies: Only select tasks whose dependencies are marked as 'done'
-   - Priority: Choose higher priority tasks first ('high' > 'medium' > 'low')
-   - ID order: When priorities are equal, select the task with the lowest ID
+The agent will execute:
+```bash
+node scripts/dev.js generate
+```
 
-4. **Task Clarification**: If a task description is unclear or lacks detail:
-   - Check if a corresponding task file exists in the tasks/ directory
-   - If more information is needed, ask for clarification
-   - If architectural changes have occurred, run `npm run dev -- update --from=<id> --prompt="<new architectural context>"` to update the task and all subsequent tasks
+This creates individual task files in the `tasks/` directory (e.g., `task_001.txt`, `task_002.txt`), making it easier to reference specific tasks.
 
-5. **Task Breakdown**: For complex tasks that need to be broken down into smaller steps:
-   - Use `npm run dev -- expand --id=<id> --subtasks=<number>` to generate detailed subtasks
-   - Optionally provide additional context with `--prompt="<context>"` to guide subtask generation
+## AI-Driven Development Workflow
 
-6. **Task Implementation**: Implement the code necessary for the chosen task.
+The Cursor agent is pre-configured (via the rules file) to follow this workflow:
 
-7. **Task Verification**: Before marking a task as done, verify it according to the task's specified 'testStrategy'.
+### 1. Task Discovery and Selection
 
-8. **Task Completion**: When a task is completed and verified, run `npm run dev -- set-status --id=<id> --status=done` to mark it as done.
+Ask the agent to list available tasks:
 
-9. **Implementation Drift Handling**: If during implementation, you discover that the approach differs significantly from what was planned, call `npm run dev -- update --from=<futureTaskId> --prompt="Detailed explanation of changes..."` to rewrite subsequent tasks.
+```
+What tasks are available to work on next?
+```
 
-10. **Task File Generation**: After any updates to tasks.json, run `npm run generate` to regenerate the individual task files.
+The agent will:
+- Run `node scripts/dev.js list` to see all tasks
+- Analyze dependencies to determine which tasks are ready to be worked on
+- Prioritize tasks based on priority level and ID order
+- Suggest the next task(s) to implement
 
-## Command Reference
+### 2. Task Implementation
+
+When implementing a task, the agent will:
+- Reference the task's details section for implementation specifics
+- Consider dependencies on previous tasks
+- Follow the project's coding standards
+- Create appropriate tests based on the task's testStrategy
+
+You can ask:
+```
+Let's implement task 3. What does it involve?
+```
+
+### 3. Task Verification
+
+Before marking a task as complete, verify it according to:
+- The task's specified testStrategy
+- Any automated tests in the codebase
+- Manual verification if required
+
+### 4. Task Completion
+
+When a task is completed, tell the agent:
+
+```
+Task 3 is now complete. Please update its status.
+```
+
+The agent will execute:
+```bash
+node scripts/dev.js set-status --id=3 --status=done
+```
+
+### 5. Handling Implementation Drift
+
+If during implementation, you discover that:
+- The current approach differs significantly from what was planned
+- Future tasks need to be modified due to current implementation choices
+- New dependencies or requirements have emerged
+
+Tell the agent:
+```
+We've changed our approach. We're now using Express instead of Fastify. Please update all future tasks to reflect this change.
+```
+
+The agent will execute:
+```bash
+node scripts/dev.js update --from=4 --prompt="Now we are using Express instead of Fastify."
+```
+
+This will rewrite or re-scope subsequent tasks in tasks.json while preserving completed work.
+
+### 6. Breaking Down Complex Tasks
+
+For complex tasks that need more granularity:
+
+```
+Task 5 seems complex. Can you break it down into subtasks?
+```
+
+The agent will execute:
+```bash
+node scripts/dev.js expand --id=5 --subtasks=3
+```
+
+You can provide additional context:
+```
+Please break down task 5 with a focus on security considerations.
+```
+
+The agent will execute:
+```bash
+node scripts/dev.js expand --id=5 --prompt="Focus on security aspects"
+```
+
+You can also expand all pending tasks:
+```
+Please break down all pending tasks into subtasks.
+```
+
+The agent will execute:
+```bash
+node scripts/dev.js expand --all
+```
+
+## Manual Command Reference
+
+While the Cursor agent will handle most commands for you, you can also run them manually:
 
 ### Parse PRD
 ```bash
@@ -161,28 +262,39 @@ Tasks in tasks.json have the following structure:
 
 7. **Communicate context to the agent**: When asking the Cursor agent to help with a task, provide context about what you're trying to achieve.
 
-## Configuration
+## Example Cursor AI Interactions
 
-The system can be configured through environment variables in a `.env` file:
+### Starting a new project
+```
+I've just initialized a new project with Claude Task Master. I have a PRD at scripts/prd.txt. 
+Can you help me parse it and set up the initial tasks?
+```
 
-### Required Configuration
-- `ANTHROPIC_API_KEY`: Your Anthropic API key for Claude
+### Working on tasks
+```
+What's the next task I should work on? Please consider dependencies and priorities.
+```
 
-### Optional Configuration
-- `MODEL`: Specify which Claude model to use (default: "claude-3-7-sonnet-20250219")
-- `MAX_TOKENS`: Maximum tokens for model responses (default: 4000)
-- `TEMPERATURE`: Temperature for model responses (default: 0.7)
-- `DEBUG`: Enable debug logging (default: false)
-- `LOG_LEVEL`: Log level - debug, info, warn, error (default: info)
-- `DEFAULT_SUBTASKS`: Default number of subtasks when expanding (default: 3)
-- `DEFAULT_PRIORITY`: Default priority for generated tasks (default: medium)
-- `PROJECT_NAME`: Override default project name in tasks.json
-- `PROJECT_VERSION`: Override default version in tasks.json
+### Implementing a specific task
+```
+I'd like to implement task 4. Can you help me understand what needs to be done and how to approach it?
+```
 
-## Additional Documentation
+### Handling changes
+```
+We've decided to use MongoDB instead of PostgreSQL. Can you update all future tasks to reflect this change?
+```
 
-For more detailed documentation on the scripts, see the [scripts/README.md](scripts/README.md) file.
+### Completing work
+```
+I've finished implementing the authentication system described in task 2. All tests are passing. 
+Please mark it as complete and tell me what I should work on next.
+```
+
+## Documentation
+
+For more detailed documentation on the scripts, see the [scripts/README.md](scripts/README.md) file in your initialized project.
 
 ## License
 
-Copyright (c) {{year}} {{authorName}} 
+MIT 

@@ -172,7 +172,7 @@ async function callClaude(prdContent, prdPath, numTasks, retryCount = 0) {
     ]
   }`
 
-  let systemPrompt = "You are a helpful assistant that generates tasks from a PRD using the following template: " + TASKS_JSON_TEMPLATE + "ONLY RETURN THE JSON, NOTHING ELSE.";
+  let systemPrompt = "You are a helpful assistant that generates tasks from a PRD using the below json template. You don't worry much about non-task related content, nor do you worry about tasks that don't particularly add value to an mvp. Things like implementing security enhancements, documentation, expansive testing etc are nice to have. The most important is to turn the PRD into a task list that fully materializes the product enough so it can go to market. The JSON template goes as follows -- make sure to only return the json, nothing else: " + TASKS_JSON_TEMPLATE + "ONLY RETURN THE JSON, NOTHING ELSE.";
   
   // Add instruction about the number of tasks if specified
   if (numTasks) {
@@ -275,25 +275,21 @@ async function handleStreamingRequest(prdContent, prdPath, numTasks, maxTokens, 
   let fullResponse = '';
   let streamComplete = false;
   let streamError = null;
-  
+  let streamingInterval = null; // Initialize streamingInterval here
+
   try {
     const stream = await anthropic.messages.create({
       max_tokens: maxTokens,
       model: CONFIG.model,
       temperature: CONFIG.temperature,
-      messages: [
-        { 
-          role: "user", 
-          content: prdContent 
-        }
-      ],
+      messages: [{ role: "user", content: prdContent }],
       system: systemPrompt,
       stream: true
     });
     
     // Update loading indicator to show streaming progress
     let dotCount = 0;
-    const streamingInterval = setInterval(() => {
+    streamingInterval = setInterval(() => {
       readline.cursorTo(process.stdout, 0);
       process.stdout.write(`Receiving streaming response from Claude${'.'.repeat(dotCount)}`);
       dotCount = (dotCount + 1) % 4;
@@ -316,7 +312,7 @@ async function handleStreamingRequest(prdContent, prdPath, numTasks, maxTokens, 
     
     return processClaudeResponse(fullResponse, numTasks, 0, prdContent, prdPath);
   } catch (error) {
-    clearInterval(streamingInterval);
+    if (streamingInterval) clearInterval(streamingInterval); // Safely clear interval
     stopLoadingIndicator(loadingIndicator);
     log('error', "Error during streaming response:", error);
     throw error;
