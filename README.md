@@ -29,6 +29,24 @@ This will prompt you for project details and set up a new project with the neces
 1. This package uses ES modules. Your package.json should include `"type": "module"`.
 2. The Anthropic SDK version should be 0.39.0 or higher.
 
+## Troubleshooting
+
+### If `npx claude-task-init` doesn't respond:
+
+Try running it with Node directly:
+
+```bash
+node node_modules/claude-task-master/scripts/init.js
+```
+
+Or clone the repository and run:
+
+```bash
+git clone https://github.com/eyaltoledano/claude-task-master.git
+cd claude-task-master
+node scripts/init.js
+```
+
 ## Integrating with Cursor AI
 
 Claude Task Master is designed to work seamlessly with [Cursor AI](https://www.cursor.so/), providing a structured workflow for AI-driven development.

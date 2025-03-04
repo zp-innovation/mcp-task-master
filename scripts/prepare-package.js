@@ -144,6 +144,17 @@ function preparePackage() {
     process.exit(1);
   }
   
+  // Make scripts executable
+  log('info', 'Making scripts executable...');
+  try {
+    execSync('chmod +x scripts/init.js', { stdio: 'ignore' });
+    log('info', 'Made scripts/init.js executable');
+    execSync('chmod +x scripts/dev.js', { stdio: 'ignore' });
+    log('info', 'Made scripts/dev.js executable');
+  } catch (error) {
+    log('error', 'Failed to make scripts executable:', error.message);
+  }
+  
   log('success', 'Package preparation completed successfully!');
   log('info', 'You can now publish the package with:');
   log('info', '  npm publish');

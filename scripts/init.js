@@ -1,5 +1,7 @@
 #!/usr/bin/env node
 
+console.log('Starting claude-task-init...');
+
 import fs from 'fs';
 import path from 'path';
 import { execSync } from 'child_process';
@@ -7,14 +9,13 @@ import readline from 'readline';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
 
+// Debug information
+console.log('Node version:', process.version);
+console.log('Current directory:', process.cwd());
+console.log('Script path:', import.meta.url);
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
-
-// Create readline interface for user input
-const rl = readline.createInterface({
-  input: process.stdin,
-  output: process.stdout
-});
 
 // Define log levels and colors
 const LOG_LEVELS = {
@@ -88,47 +89,63 @@ function copyTemplateFile(templateName, targetPath, replacements = {}) {
 
 // Main function to initialize a new project
 async function initializeProject(options = {}) {
+  // If options are provided, use them directly without prompting
+  if (options.projectName && options.projectDescription) {
+    const projectName = options.projectName;
+    const projectDescription = options.projectDescription;
+    const projectVersion = options.projectVersion || '1.0.0';
+    const authorName = options.authorName || '';
+    
+    createProjectStructure(projectName, projectDescription, projectVersion, authorName);
+    return {
+      projectName,
+      projectDescription,
+      projectVersion,
+      authorName
+    };
+  } 
+  
+  // Otherwise, prompt the user for input
+  // Create readline interface only when needed
+  const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout
+  });
+  
+  try {
+    const projectName = await promptQuestion(rl, 'Enter project name: ');
+    const projectDescription = await promptQuestion(rl, 'Enter project description: ');
+    const projectVersionInput = await promptQuestion(rl, 'Enter project version (default: 1.0.0): ');
+    const authorName = await promptQuestion(rl, 'Enter your name: ');
+    
+    // Set default version if not provided
+    const projectVersion = projectVersionInput.trim() ? projectVersionInput : '1.0.0';
+    
+    // Close the readline interface
+    rl.close();
+    
+    // Create the project structure
+    createProjectStructure(projectName, projectDescription, projectVersion, authorName);
+    
+    return {
+      projectName,
+      projectDescription,
+      projectVersion,
+      authorName
+    };
+  } catch (error) {
+    // Make sure to close readline on error
+    rl.close();
+    throw error;
+  }
+}
+
+// Helper function to promisify readline question
+function promptQuestion(rl, question) {
   return new Promise((resolve) => {
-    // If options are provided, use them directly
-    if (options.projectName && options.projectDescription) {
-      const projectName = options.projectName;
-      const projectDescription = options.projectDescription;
-      const projectVersion = options.projectVersion || '1.0.0';
-      const authorName = options.authorName || '';
-      
-      createProjectStructure(projectName, projectDescription, projectVersion, authorName);
-      resolve({
-        projectName,
-        projectDescription,
-        projectVersion,
-        authorName
-      });
-    } else {
-      // Otherwise, prompt the user for input
-      rl.question('Enter project name: ', (projectName) => {
-        rl.question('Enter project description: ', (projectDescription) => {
-          rl.question('Enter project version (default: 1.0.0): ', (projectVersion) => {
-            rl.question('Enter your name: ', (authorName) => {
-              // Set default version if not provided
-              if (!projectVersion.trim()) {
-                projectVersion = '1.0.0';
-              }
-              
-              // Create the project structure
-              createProjectStructure(projectName, projectDescription, projectVersion, authorName);
-              
-              rl.close();
-              resolve({
-                projectName,
-                projectDescription,
-                projectVersion,
-                authorName
-              });
-            });
-          });
-        });
-      });
-    }
+    rl.question(question, (answer) => {
+      resolve(answer);
+    });
   });
 }
 
@@ -199,22 +216,6 @@ function createProjectStructure(projectName, projectDescription, projectVersion,
   // Create main README.md
   copyTemplateFile('README.md', path.join(targetDir, 'README.md'), replacements);
   
-  // Create empty tasks.json
-  const tasksJson = {
-    meta: {
-      name: projectName,
-      version: projectVersion,
-      description: projectDescription
-    },
-    tasks: []
-  };
-  
-  fs.writeFileSync(
-    path.join(targetDir, 'tasks.json'),
-    JSON.stringify(tasksJson, null, 2)
-  );
-  log('info', 'Created tasks.json');
-  
   // Initialize git repository if git is available
   try {
     if (!fs.existsSync(path.join(targetDir, '.git'))) {
@@ -236,16 +237,28 @@ function createProjectStructure(projectName, projectDescription, projectVersion,
 }
 
 // Run the initialization if this script is executed directly
-if (process.argv[1] === fileURLToPath(import.meta.url)) {
-  (async function main() {
-    try {
-      await initializeProject();
-    } catch (error) {
-      log('error', 'Failed to initialize project:', error);
-      process.exit(1);
-    }
-  })();
-}
+// The original check doesn't work with npx and global commands
+// if (process.argv[1] === fileURLToPath(import.meta.url)) {
+// Instead, we'll always run the initialization if this file is the main module
+console.log('Checking if script should run initialization...');
+console.log('import.meta.url:', import.meta.url);
+console.log('process.argv:', process.argv);
+
+// Always run initialization when this file is loaded directly
+// This works with both direct node execution and npx/global commands
+(async function main() {
+  try {
+    console.log('Starting initialization...');
+    await initializeProject();
+    // Process should exit naturally after completion
+    console.log('Initialization completed, exiting...');
+    process.exit(0);
+  } catch (error) {
+    console.error('Failed to initialize project:', error);
+    log('error', 'Failed to initialize project:', error);
+    process.exit(1);
+  }
+})();
 
 // Export functions for programmatic use
 export {
