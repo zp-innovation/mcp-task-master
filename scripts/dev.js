@@ -432,26 +432,68 @@ async function updateTasks(tasksPath, fromId, prompt) {
   log('info', `Updating tasks from ID >= ${fromId} with prompt: ${prompt}`);
 
   const tasksToUpdate = data.tasks.filter(task => task.id >= fromId && task.status !== "done");
+  
+  const systemPrompt = "You are a helpful assistant that updates tasks based on provided insights. Return only the updated tasks as a JSON array.";
+  const userPrompt = `Update these tasks based on the following insight: ${prompt}\nTasks: ${JSON.stringify(tasksToUpdate, null, 2)}`;
+  
+  // Start loading indicator
+  const loadingIndicator = startLoadingIndicator("Waiting for Claude to update tasks...");
+  
+  let fullResponse = '';
+  let streamingInterval = null;
 
-  const claudeResponse = await anthropic.messages.create({
-    max_tokens: CONFIG.maxTokens,
-    model: CONFIG.model,
-    temperature: CONFIG.temperature,
-    messages: [
-      { role: "user", content: `Update these tasks based on the following insight: ${prompt}\nTasks: ${JSON.stringify(tasksToUpdate, null, 2)}` }
-    ],
-    system: "You are a helpful assistant that updates tasks based on provided insights. Return only the updated tasks as a JSON array."
-  });
+  try {
+    const stream = await anthropic.messages.create({
+      max_tokens: CONFIG.maxTokens,
+      model: CONFIG.model,
+      temperature: CONFIG.temperature,
+      messages: [{ role: "user", content: userPrompt }],
+      system: systemPrompt,
+      stream: true
+    });
+    
+    // Update loading indicator to show streaming progress
+    let dotCount = 0;
+    streamingInterval = setInterval(() => {
+      readline.cursorTo(process.stdout, 0);
+      process.stdout.write(`Receiving streaming response from Claude${'.'.repeat(dotCount)}`);
+      dotCount = (dotCount + 1) % 4;
+    }, 500);
+    
+    // Process the stream
+    for await (const chunk of stream) {
+      if (chunk.type === 'content_block_delta' && chunk.delta.text) {
+        fullResponse += chunk.delta.text;
+      }
+    }
+    
+    clearInterval(streamingInterval);
+    stopLoadingIndicator(loadingIndicator);
+    
+    log('info', "Completed streaming response from Claude API!");
+    log('debug', `Streaming response length: ${fullResponse.length} characters`);
 
-  const updatedTasks = JSON.parse(claudeResponse.content[0].text);
+    try {
+      const updatedTasks = JSON.parse(fullResponse);
+      
+      data.tasks = data.tasks.map(task => {
+        const updatedTask = updatedTasks.find(t => t.id === task.id);
+        return updatedTask || task;
+      });
 
-  data.tasks = data.tasks.map(task => {
-    const updatedTask = updatedTasks.find(t => t.id === task.id);
-    return updatedTask || task;
-  });
-
-  writeJSON(tasksPath, data);
-  log('info', "Tasks updated successfully.");
+      writeJSON(tasksPath, data);
+      log('info', "Tasks updated successfully.");
+    } catch (parseError) {
+      log('error', "Failed to parse Claude's response as JSON:", parseError);
+      log('debug', "Response content:", fullResponse);
+      process.exit(1);
+    }
+  } catch (error) {
+    if (streamingInterval) clearInterval(streamingInterval);
+    stopLoadingIndicator(loadingIndicator);
+    log('error', "Error during streaming response:", error);
+    process.exit(1);
+  }
 }
 
 //
