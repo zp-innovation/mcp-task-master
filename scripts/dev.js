@@ -9,7 +9,9 @@
  *      -> Optional --tasks parameter limits the number of tasks generated.
  *
  *   2) update --from=5 --prompt="We changed from Slack to Discord."
- *      -> Regenerates tasks from ID >= 5 using the provided prompt (or naive approach).
+ *      -> Regenerates tasks from ID >= 5 using the provided prompt.
+ *      -> Only updates tasks that aren't marked as 'done'.
+ *      -> The --prompt parameter is required and should explain the changes or new context.
  *
  *   3) generate
  *      -> Generates per-task files (e.g., task_001.txt) from tasks.json
@@ -21,10 +23,12 @@
  *   5) list
  *      -> Lists tasks in a brief console view (ID, title, status).
  *
- *   6) expand --id=3 --subtasks=5 [--prompt="Additional context"]
+ *   6) expand --id=3 [--num=5] [--no-research] [--prompt="Additional context"]
  *      -> Expands a task with subtasks for more detailed implementation.
  *      -> Use --all instead of --id to expand all tasks.
- *      -> Optional --subtasks parameter controls number of subtasks (default: 3).
+ *      -> Optional --num parameter controls number of subtasks (default: 3).
+ *      -> Uses Perplexity AI for research-backed subtask generation by default.
+ *      -> Use --no-research to disable research-backed generation.
  *      -> Add --force when using --all to regenerate subtasks for tasks that already have them.
  *      -> Note: Tasks marked as 'done' or 'completed' are always skipped.
  *
@@ -35,7 +39,8 @@
  *   node dev.js generate
  *   node dev.js set-status --id=3 --status=done
  *   node dev.js list
- *   node dev.js expand --id=3 --subtasks=5
+ *   node dev.js expand --id=3 --num=5
+ *   node dev.js expand --id=3 --no-research
  *   node dev.js expand --all
  *   node dev.js expand --all --force
  */
@@ -669,7 +674,7 @@ function listTasks(tasksPath, statusFilter, withSubtasks = false) {
  * @param {boolean} useResearch - Whether to use Perplexity for research-backed subtask generation
  * @returns {Promise<void>}
  */
-async function expandTask(taskId, numSubtasks = CONFIG.defaultSubtasks, useResearch = false) {
+async function expandTask(taskId, numSubtasks = CONFIG.defaultSubtasks, useResearch = false, additionalContext = '') {
   try {
     // Get the tasks
     const tasksData = readJSON(path.join(process.cwd(), 'tasks', 'tasks.json'));
@@ -700,9 +705,9 @@ async function expandTask(taskId, numSubtasks = CONFIG.defaultSubtasks, useResea
     let subtasks;
     if (useResearch) {
       console.log(chalk.blue(`Using Perplexity AI for research-backed subtask generation...`));
-      subtasks = await generateSubtasksWithPerplexity(task, numSubtasks, nextSubtaskId);
+      subtasks = await generateSubtasksWithPerplexity(task, numSubtasks, nextSubtaskId, additionalContext);
     } else {
-      subtasks = await generateSubtasks(task, numSubtasks, nextSubtaskId);
+      subtasks = await generateSubtasks(task, numSubtasks, nextSubtaskId, additionalContext);
     }
     
     // Add the subtasks to the task
@@ -732,7 +737,7 @@ async function expandTask(taskId, numSubtasks = CONFIG.defaultSubtasks, useResea
  * @param {boolean} useResearch - Whether to use Perplexity for research-backed subtask generation
  * @returns {Promise<number>} - The number of tasks expanded
  */
-async function expandAllTasks(numSubtasks = CONFIG.defaultSubtasks, useResearch = false) {
+async function expandAllTasks(numSubtasks = CONFIG.defaultSubtasks, useResearch = false, additionalContext = '', forceFlag = false) {
   try {
     // Get the tasks
     const tasksData = readJSON(path.join(process.cwd(), 'tasks', 'tasks.json'));
@@ -759,7 +764,7 @@ async function expandAllTasks(numSubtasks = CONFIG.defaultSubtasks, useResearch 
     // Expand each task
     for (const task of tasksToExpand) {
       console.log(chalk.blue(`\nExpanding task ${task.id}: ${task.title}`));
-      await expandTask(task.id, numSubtasks, useResearch);
+      await expandTask(task.id, numSubtasks, useResearch, additionalContext);
       tasksExpanded++;
     }
     
@@ -1007,7 +1012,7 @@ function parseSubtasksFromText(text, startId, expectedCount) {
  * @param {number} nextSubtaskId - The ID to start assigning to subtasks
  * @returns {Promise<Array>} - The generated subtasks
  */
-async function generateSubtasksWithPerplexity(task, numSubtasks = 3, nextSubtaskId = 1) {
+async function generateSubtasksWithPerplexity(task, numSubtasks = 3, nextSubtaskId = 1, additionalContext = '') {
   const { title, description, details = '', subtasks = [] } = task;
   
   console.log(chalk.blue(`Generating ${numSubtasks} subtasks for task: ${title}`));
@@ -1028,28 +1033,100 @@ async function generateSubtasksWithPerplexity(task, numSubtasks = 3, nextSubtask
   if (tasksData.meta && tasksData.meta.source) {
     try {
       prdContent = fs.readFileSync(path.join(process.cwd(), tasksData.meta.source), 'utf8');
+      console.log(chalk.green(`Successfully loaded PRD from ${tasksData.meta.source} (${prdContent.length} characters)`));
     } catch (error) {
       console.log(chalk.yellow(`Could not read PRD at ${tasksData.meta.source}. Proceeding without it.`));
     }
   }
 
-  // Construct the prompt for Perplexity/Anthropic
-  const prompt = `I need to break down the following task into ${numSubtasks} detailed subtasks:
+  // Get the specific task file for more detailed context if available
+  let taskFileContent = '';
+  try {
+    const taskFileName = `task_${String(task.id).padStart(3, '0')}.txt`;
+    const taskFilePath = path.join(process.cwd(), 'tasks', taskFileName);
+    if (fs.existsSync(taskFilePath)) {
+      taskFileContent = fs.readFileSync(taskFilePath, 'utf8');
+      console.log(chalk.green(`Successfully loaded task file ${taskFileName} for additional context`));
+    }
+  } catch (error) {
+    console.log(chalk.yellow(`Could not read task file for task ${task.id}. Proceeding without it.`));
+  }
 
+  // Get dependency task details for better context
+  let dependencyDetails = '';
+  if (task.dependencies && task.dependencies.length > 0) {
+    dependencyDetails = 'Dependency Tasks:\n';
+    for (const depId of task.dependencies) {
+      const depTask = tasksData.tasks.find(t => t.id === depId);
+      if (depTask) {
+        dependencyDetails += `Task ${depId}: ${depTask.title}\n`;
+        dependencyDetails += `Description: ${depTask.description}\n`;
+        if (depTask.details) {
+          dependencyDetails += `Details: ${depTask.details.substring(0, 200)}${depTask.details.length > 200 ? '...' : ''}\n`;
+        }
+        dependencyDetails += '\n';
+      }
+    }
+  }
+
+  // Extract project metadata for context
+  const projectContext = tasksData.meta ? 
+    `Project: ${tasksData.meta.projectName || 'Unknown'}
+Version: ${tasksData.meta.version || '1.0.0'}
+Description: ${tasksData.meta.description || 'No description available'}` : '';
+
+  // Construct the prompt for Perplexity/Anthropic with enhanced context
+  const prompt = `I need to break down the following task into ${numSubtasks} detailed subtasks for a software development project.
+
+${projectContext}
+
+CURRENT TASK:
+Task ID: ${task.id}
 Task Title: ${title}
 Task Description: ${description}
+Priority: ${task.priority || 'medium'}
 Additional Details: ${details}
+${additionalContext ? `\nADDITIONAL CONTEXT PROVIDED BY USER:\n${additionalContext}` : ''}
+
+${taskFileContent ? `DETAILED TASK INFORMATION:
+${taskFileContent}` : ''}
+
+${dependencyDetails ? dependencyDetails : ''}
 
 ${subtasks.length > 0 ? `Existing Subtasks:
 ${subtasks.map(st => `- ${st.title}: ${st.description}`).join('\n')}` : ''}
 
-${prdContent ? `Here is the Product Requirements Document for context:
+${prdContent ? `PRODUCT REQUIREMENTS DOCUMENT:
 ${prdContent}` : ''}
 
-${tasksData.tasks ? `Here are the other tasks in the project for context:
-${JSON.stringify(tasksData.tasks.filter(t => t.id !== task.id).map(t => ({ id: t.id, title: t.title, description: t.description })), null, 2)}` : ''}
+${tasksData.tasks ? `PROJECT CONTEXT - OTHER RELATED TASKS:
+${JSON.stringify(
+  tasksData.tasks
+    .filter(t => t.id !== task.id)
+    // Prioritize tasks that are dependencies or depend on this task
+    .sort((a, b) => {
+      const aIsRelated = task.dependencies?.includes(a.id) || a.dependencies?.includes(task.id);
+      const bIsRelated = task.dependencies?.includes(b.id) || b.dependencies?.includes(task.id);
+      return bIsRelated - aIsRelated;
+    })
+    .slice(0, 5) // Limit to 5 most relevant tasks to avoid context overload
+    .map(t => ({ 
+      id: t.id, 
+      title: t.title, 
+      description: t.description,
+      status: t.status,
+      dependencies: t.dependencies
+    })), 
+  null, 2
+)}` : ''}
 
-Please generate ${numSubtasks} subtasks. For each subtask, provide:
+Please generate ${numSubtasks} subtasks that are:
+1. Specific and actionable
+2. Relevant to the current technology stack and project requirements
+3. Properly sequenced with clear dependencies
+4. Detailed enough to be implemented without further clarification
+
+For each subtask, provide:
 1. A clear, concise title
 2. A detailed description explaining what needs to be done
 3. Dependencies (if any) - list the IDs of tasks this subtask depends on
@@ -1065,7 +1142,7 @@ Acceptance Criteria: [List of criteria]
 Subtask 2: [Title]
 ...
 
-Research the task thoroughly and ensure the subtasks are comprehensive, specific, and actionable.`;
+Research the task thoroughly and ensure the subtasks are comprehensive, specific, and actionable. Focus on technical implementation details rather than generic steps.`;
 
   // Start loading indicator
   const loadingInterval = startLoadingIndicator('Researching and generating subtasks with AI');
@@ -1098,7 +1175,7 @@ Research the task thoroughly and ensure the subtasks are comprehensive, specific
         model: MODEL,
         max_tokens: MAX_TOKENS,
         temperature: TEMPERATURE,
-        system: "You are an expert software developer and project manager. Your task is to break down software development tasks into detailed subtasks.",
+        system: "You are an expert software developer and project manager. Your task is to break down software development tasks into detailed subtasks that are specific, actionable, and technically relevant.",
         messages: [
           {
             role: "user",
@@ -1164,14 +1241,24 @@ async function main() {
 
   program
     .command('update')
-    .description('Update tasks based on the PRD')
+    .description('Update tasks based on new information or implementation changes')
     .option('-f, --file <file>', 'Path to the tasks file', 'tasks/tasks.json')
+    .option('--from <id>', 'Task ID to start updating from (tasks with ID >= this value will be updated)', '1')
+    .option('-p, --prompt <text>', 'Prompt explaining the changes or new context (required)')
     .action(async (options) => {
       const tasksPath = options.file;
+      const fromId = parseInt(options.from, 10);
+      const prompt = options.prompt;
       
-      console.log(chalk.blue(`Updating tasks from: ${tasksPath}`));
+      if (!prompt) {
+        console.error(chalk.red('Error: --prompt parameter is required. Please provide information about the changes.'));
+        process.exit(1);
+      }
       
-      await updateTasks(tasksPath);
+      console.log(chalk.blue(`Updating tasks from ID >= ${fromId} with prompt: "${prompt}"`));
+      console.log(chalk.blue(`Tasks file: ${tasksPath}`));
+      
+      await updateTasks(tasksPath, fromId, prompt);
     });
 
   program
@@ -1233,7 +1320,8 @@ async function main() {
     .option('-i, --id <id>', 'Task ID to expand')
     .option('-a, --all', 'Expand all tasks')
     .option('-n, --num <number>', 'Number of subtasks to generate', CONFIG.defaultSubtasks.toString())
-    .option('-r, --research', 'Use Perplexity AI for research-backed subtask generation')
+    .option('-r, --no-research', 'Disable Perplexity AI for research-backed subtask generation')
+    .option('-p, --prompt <text>', 'Additional context to guide subtask generation')
     .option('--force', 'Force regeneration of subtasks for tasks that already have them')
     .action(async (options) => {
       const tasksPath = options.file;
@@ -1241,20 +1329,31 @@ async function main() {
       const allFlag = options.all;
       const numSubtasks = parseInt(options.num, 10);
       const forceFlag = options.force;
-      const useResearch = options.research;
+      const useResearch = options.research !== false; // Default to true unless explicitly disabled
+      const additionalContext = options.prompt || '';
       
       if (allFlag) {
         console.log(chalk.blue(`Expanding all tasks with ${numSubtasks} subtasks each...`));
         if (useResearch) {
           console.log(chalk.blue('Using Perplexity AI for research-backed subtask generation'));
+        } else {
+          console.log(chalk.yellow('Research-backed subtask generation disabled'));
         }
-        await expandAllTasks(numSubtasks, useResearch);
+        if (additionalContext) {
+          console.log(chalk.blue(`Additional context: "${additionalContext}"`));
+        }
+        await expandAllTasks(numSubtasks, useResearch, additionalContext, forceFlag);
       } else if (idArg) {
         console.log(chalk.blue(`Expanding task ${idArg} with ${numSubtasks} subtasks...`));
         if (useResearch) {
           console.log(chalk.blue('Using Perplexity AI for research-backed subtask generation'));
+        } else {
+          console.log(chalk.yellow('Research-backed subtask generation disabled'));
         }
-        await expandTask(idArg, numSubtasks, useResearch);
+        if (additionalContext) {
+          console.log(chalk.blue(`Additional context: "${additionalContext}"`));
+        }
+        await expandTask(idArg, numSubtasks, useResearch, additionalContext);
       } else {
         console.error(chalk.red('Error: Please specify a task ID with --id=<id> or use --all to expand all tasks.'));
       }

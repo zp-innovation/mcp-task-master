@@ -77,6 +77,26 @@ node scripts/dev.js list --with-subtasks
 node scripts/dev.js list --status=pending --with-subtasks
 ```
 
+## Updating Tasks
+
+The `update` command allows you to update tasks based on new information or implementation changes:
+
+```bash
+# Update tasks starting from ID 4 with a new prompt
+node scripts/dev.js update --from=4 --prompt="Refactor tasks from ID 4 onward to use Express instead of Fastify"
+
+# Update all tasks (default from=1)
+node scripts/dev.js update --prompt="Add authentication to all relevant tasks"
+
+# Specify a different tasks file
+node scripts/dev.js update --file=custom-tasks.json --from=5 --prompt="Change database from MongoDB to PostgreSQL"
+```
+
+Notes:
+- The `--prompt` parameter is required and should explain the changes or new context
+- Only tasks that aren't marked as 'done' will be updated
+- Tasks with ID >= the specified --from value will be updated
+
 ## Expanding Tasks
 
 The `expand` command allows you to break down tasks into subtasks for more detailed implementation:
@@ -86,7 +106,7 @@ The `expand` command allows you to break down tasks into subtasks for more detai
 node scripts/dev.js expand --id=3
 
 # Expand a specific task with 5 subtasks
-node scripts/dev.js expand --id=3 --subtasks=5
+node scripts/dev.js expand --id=3 --num=5
 
 # Expand a task with additional context
 node scripts/dev.js expand --id=3 --prompt="Focus on security aspects"

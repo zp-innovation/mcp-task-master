@@ -1,6 +1,6 @@
 {
   "name": "claude-task-master",
-  "version": "1.3.2",
+  "version": "1.4.0",
   "description": "A task management system for AI-driven development with Claude",
   "main": "index.js",
   "type": "module",
