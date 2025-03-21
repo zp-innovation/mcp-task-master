@@ -127,6 +127,7 @@ function preparePackage() {
     'assets/env.example',
     'assets/gitignore',
     'assets/example_prd.txt',
+    'assets/scripts_README.md',
     '.cursor/rules/dev_workflow.mdc',
     '.cursor/rules/cursor_rules.mdc',
     '.cursor/rules/self_improve.mdc'

@@ -81,7 +81,7 @@ function copyTemplateFile(templateName, targetPath, replacements = {}) {
       sourcePath = path.join(__dirname, 'dev.js');
       break;
     case 'scripts_README.md':
-      sourcePath = path.join(__dirname, 'README.md');
+      sourcePath = path.join(__dirname, '..', 'assets', 'scripts_README.md');
       break;
     case 'dev_workflow.mdc':
       sourcePath = path.join(__dirname, '..', '.cursor', 'rules', 'dev_workflow.mdc');
@@ -269,13 +269,24 @@ function createProjectStructure(projectName, projectDescription, projectVersion,
     log('warn', 'Git not available, skipping repository initialization');
   }
   
+  // Run npm install automatically
+  log('info', 'Installing dependencies...');
+  try {
+    execSync('npm install', { stdio: 'inherit', cwd: targetDir });
+    log('info', `${COLORS.green}Dependencies installed successfully!${COLORS.reset}`);
+  } catch (error) {
+    log('error', 'Failed to install dependencies:', error.message);
+    log('error', 'Please run npm install manually');
+  }
+  
   log('info', `${COLORS.green}${COLORS.bright}Project initialized successfully!${COLORS.reset}`);
   log('info', '');
   log('info', 'Next steps:');
-  log('info', '1. Run `npm install` to install dependencies');
-  log('info', '2. Create a .env file with your ANTHROPIC_API_KEY (see .env.example)');
-  log('info', '3. Add your PRD to the project');
-  log('info', '4. Run `npm run parse-prd -- --input=<your-prd-file.txt>` to generate tasks');
+  log('info', '1. Create a .env file with your ANTHROPIC_API_KEY (see .env.example)');
+  log('info', '2. Add your PRD.txt to the /scripts directory');
+  log('info', '3. Ask Cursor Agent to parse your PRD.txt and generate tasks');
+  log('info', '└── You can also manually run `npm run parse-prd -- --input=<your-prd-file.txt>` to generate tasks');
+  log('info', '4. Review the README.md file to learn how to use other commands via Cursor Agent.');
   log('info', '');
 }
 

@@ -361,8 +361,80 @@ Please mark it as complete and tell me what I should work on next.
 
 ## Documentation
 
-For more detailed documentation on the scripts, see the [scripts/README.md](scripts/README.md) file in your initialized project.
+For more detailed documentation on the scripts and command-line options, see the [scripts/README.md](scripts/README.md) file in your initialized project.
 
 ## License
 
 MIT 
+
+### Analyzing Task Complexity
+
+To analyze the complexity of tasks and automatically generate expansion recommendations:
+
+```bash
+npm run dev -- analyze-complexity
+```
+
+This command:
+- Analyzes each task using AI to assess its complexity
+- Recommends optimal number of subtasks based on configured DEFAULT_SUBTASKS
+- Generates tailored prompts for expanding each task
+- Creates a comprehensive JSON report with ready-to-use commands
+- Saves the report to scripts/task-complexity-report.json by default
+
+Options:
+```bash
+# Save report to a custom location
+npm run dev -- analyze-complexity --output=my-report.json
+
+# Use a specific LLM model
+npm run dev -- analyze-complexity --model=claude-3-opus-20240229
+
+# Set a custom complexity threshold (1-10)
+npm run dev -- analyze-complexity --threshold=6
+
+# Use an alternative tasks file
+npm run dev -- analyze-complexity --file=custom-tasks.json
+
+# Use Perplexity AI for research-backed complexity analysis
+npm run dev -- analyze-complexity --research
+```
+
+The generated report contains:
+- Complexity analysis for each task (scored 1-10)
+- Recommended number of subtasks based on complexity
+- AI-generated expansion prompts customized for each task
+- Ready-to-run expansion commands directly within each task analysis
+
+### Smart Task Expansion
+
+The `expand` command now automatically checks for and uses the complexity report:
+
+```bash
+# Expand a task, using complexity report recommendations if available
+npm run dev -- expand --id=8
+
+# Expand all tasks, prioritizing by complexity score if a report exists
+npm run dev -- expand --all
+```
+
+When a complexity report exists:
+- Tasks are automatically expanded using the recommended subtask count and prompts
+- When expanding all tasks, they're processed in order of complexity (highest first)
+- Research-backed generation is preserved from the complexity analysis
+- You can still override recommendations with explicit command-line options
+
+Example workflow:
+```bash
+# Generate the complexity analysis report with research capabilities
+npm run dev -- analyze-complexity --research
+
+# Review the report in scripts/task-complexity-report.json
+
+# Expand tasks using the optimized recommendations
+npm run dev -- expand --id=8
+# or expand all tasks
+npm run dev -- expand --all
+```
+
+This integration ensures that task expansion is informed by thorough complexity analysis, resulting in better subtask organization and more efficient development.

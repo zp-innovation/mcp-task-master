@@ -13,7 +13,8 @@
 - User personas
 - Key user flows
 - UI/UX considerations]
-
+</context>
+<PRD>
 # Technical Architecture  
 [Outline the technical implementation details:
 - System components
@@ -25,23 +26,22 @@
 [Break down the development process into phases:
 - MVP requirements
 - Future enhancements
-- Timeline estimates]
+- Do not think about timelines whatsoever -- all that matters is scope and detailing exactly what needs to be build in each phase so it can later be cut up into tasks]
 
-# Success Metrics  
-[Define how success will be measured:
-- Key performance indicators
-- User adoption metrics
-- Business goals]
+# Logical Dependency Chain
+[Define the logical order of development:
+- Which features need to be built first (foundation)
+- Getting as quickly as possible to something usable/visible front end that works
+- Properly pacing and scoping each feature so it is atomic but can also be built upon and improved as development approaches]
 
 # Risks and Mitigations  
 [Identify potential risks and how they'll be addressed:
 - Technical challenges
-- Market risks
+- Figuring out the MVP that we can build upon
 - Resource constraints]
 
 # Appendix  
 [Include any additional information:
 - Research findings
-- Competitive analysis
 - Technical specifications]
-</context> 
+</PRD>
