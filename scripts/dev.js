@@ -537,7 +537,8 @@ function generateTaskFiles(tasksPath, outputDir) {
     const filename = `task_${String(task.id).padStart(3, '0')}.txt`;
     const filepath = path.join(outputDir, filename);
 
-    const content = [
+    // Create the base content
+    const contentParts = [
       `# Task ID: ${task.id}`,
       `# Title: ${task.title}`,
       `# Status: ${task.status}`,
@@ -547,8 +548,24 @@ function generateTaskFiles(tasksPath, outputDir) {
       `# Details:\n${task.details}\n`,
       `# Test Strategy:`,
       `${task.testStrategy}\n`
-    ].join('\n');
+    ];
+    
+    // Add subtasks if they exist
+    if (task.subtasks && task.subtasks.length > 0) {
+      contentParts.push(`# Subtasks:`);
+      task.subtasks.forEach(subtask => {
+        contentParts.push(`## Subtask ID: ${subtask.id}`);
+        contentParts.push(`## Title: ${subtask.title}`);
+        contentParts.push(`## Status: ${subtask.status}`);
+        contentParts.push(`## Dependencies: ${subtask.dependencies ? subtask.dependencies.join(", ") : ""}`);
+        contentParts.push(`## Description: ${subtask.description}`);
+        if (subtask.acceptanceCriteria) {
+          contentParts.push(`## Acceptance Criteria:\n${subtask.acceptanceCriteria}\n`);
+        }
+      });
+    }
 
+    const content = contentParts.join('\n');
     fs.writeFileSync(filepath, content, 'utf8');
     log('info', `Generated: ${filename}`);
   });
@@ -560,74 +577,94 @@ function generateTaskFiles(tasksPath, outputDir) {
 // 4) set-status
 //
 function setTaskStatus(tasksPath, taskIdInput, newStatus) {
-  // For recursive calls with multiple IDs, we need to read the latest data each time
+  // Validate inputs
+  if (!taskIdInput || !newStatus) {
+    log('error', 'Task ID and new status are required');
+    process.exit(1);
+  }
+
+  // Read fresh data for each status update
   const data = readJSON(tasksPath);
   if (!data || !data.tasks) {
-    log('error', "No valid tasks found.");
+    log('error', 'No valid tasks found in tasks.json');
     process.exit(1);
   }
 
   // Handle multiple task IDs (comma-separated)
   if (typeof taskIdInput === 'string' && taskIdInput.includes(',')) {
     const taskIds = taskIdInput.split(',').map(id => id.trim());
-    log('info', `Processing multiple tasks: ${taskIds.join(', ')}`);
+    log('info', `Processing multiple task IDs: ${taskIds.join(', ')}`);
     
     // Process each task ID individually
-    for (const taskId of taskIds) {
-      // Create a new instance for each task to ensure we're working with fresh data
-      setTaskStatus(tasksPath, taskId, newStatus);
-    }
-    
+    taskIds.forEach(id => {
+      setTaskStatus(tasksPath, id, newStatus);
+    });
     return;
   }
 
-  // Convert numeric taskId to number if it's not a subtask ID
-  const taskId = (!isNaN(taskIdInput) && !String(taskIdInput).includes('.')) 
-    ? parseInt(taskIdInput, 10) 
-    : taskIdInput;
-
-  // Check if this is a subtask ID (e.g., "1.1")
-  if (typeof taskId === 'string' && taskId.includes('.')) {
-    const [parentIdStr, subtaskIdStr] = taskId.split('.');
+  // Handle subtask IDs (e.g., "1.1")
+  if (String(taskIdInput).includes('.')) {
+    const [parentIdStr, subtaskIdStr] = String(taskIdInput).split('.');
     const parentId = parseInt(parentIdStr, 10);
     const subtaskId = parseInt(subtaskIdStr, 10);
-    
+
+    if (isNaN(parentId) || isNaN(subtaskId)) {
+      log('error', `Invalid subtask ID format: ${taskIdInput}`);
+      process.exit(1);
+    }
+
+    // Find the parent task
     const parentTask = data.tasks.find(t => t.id === parentId);
-    
     if (!parentTask) {
-      log('error', `Parent task with ID=${parentId} not found.`);
+      log('error', `Parent task ${parentId} not found`);
       process.exit(1);
     }
-    
-    if (!parentTask.subtasks || parentTask.subtasks.length === 0) {
-      log('error', `Parent task with ID=${parentId} has no subtasks.`);
+
+    // Ensure subtasks array exists
+    if (!parentTask.subtasks || !Array.isArray(parentTask.subtasks)) {
+      log('error', `Parent task ${parentId} has no subtasks array`);
       process.exit(1);
     }
-    
+
+    // Find and update the subtask
     const subtask = parentTask.subtasks.find(st => st.id === subtaskId);
     if (!subtask) {
-      log('error', `Subtask with ID=${subtaskId} not found in parent task ID=${parentId}.`);
+      log('error', `Subtask ${subtaskId} not found in task ${parentId}`);
       process.exit(1);
     }
-    
-    const oldStatus = subtask.status;
+
+    // Update the subtask status
+    const oldStatus = subtask.status || 'pending';
     subtask.status = newStatus;
+    
+    // Save the changes
     writeJSON(tasksPath, data);
-    log('info', `Subtask ${parentId}.${subtaskId} status changed from '${oldStatus}' to '${newStatus}'.`);
+    log('info', `Updated subtask ${parentId}.${subtaskId} status from '${oldStatus}' to '${newStatus}'`);
+    
     return;
   }
 
   // Handle regular task ID
-  const task = data.tasks.find(t => t.id === taskId);
-  if (!task) {
-    log('error', `Task with ID=${taskId} not found.`);
+  const taskId = parseInt(String(taskIdInput), 10);
+  if (isNaN(taskId)) {
+    log('error', `Invalid task ID: ${taskIdInput}`);
     process.exit(1);
   }
 
-  const oldStatus = task.status;
+  // Find the task
+  const task = data.tasks.find(t => t.id === taskId);
+  if (!task) {
+    log('error', `Task ${taskId} not found`);
+    process.exit(1);
+  }
+
+  // Update the task status
+  const oldStatus = task.status || 'pending';
   task.status = newStatus;
+  
+  // Save the changes
   writeJSON(tasksPath, data);
-  log('info', `Task ID=${taskId} status changed from '${oldStatus}' to '${newStatus}'.`);
+  log('info', `Updated task ${taskId} status from '${oldStatus}' to '${newStatus}'`);
 }
 
 //
@@ -1279,14 +1316,20 @@ async function main() {
   program
     .command('set-status')
     .description('Set the status of a task')
-    .argument('<id>', 'Task ID')
-    .argument('<status>', 'New status (todo, in-progress, review, done)')
+    .option('-i, --id <id>', 'Task ID (can be comma-separated for multiple tasks)')
+    .option('-s, --status <status>', 'New status (todo, in-progress, review, done)')
     .option('-f, --file <file>', 'Path to the tasks file', 'tasks/tasks.json')
-    .action(async (id, status, options) => {
+    .action(async (options) => {
       const tasksPath = options.file;
-      const taskId = parseInt(id, 10);
+      const taskId = options.id;
+      const status = options.status;
       
-      console.log(chalk.blue(`Setting status of task ${taskId} to: ${status}`));
+      if (!taskId || !status) {
+        console.error(chalk.red('Error: Both --id and --status are required'));
+        process.exit(1);
+      }
+      
+      console.log(chalk.blue(`Setting status of task(s) ${taskId} to: ${status}`));
       
       await setTaskStatus(tasksPath, taskId, status);
     });
@@ -1362,7 +1405,6 @@ async function main() {
   await program.parseAsync(process.argv);
 }
 
-// ... existing code ...
 
 main().catch(err => {
   log('error', err);

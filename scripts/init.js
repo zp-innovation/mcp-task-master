@@ -86,6 +86,12 @@ function copyTemplateFile(templateName, targetPath, replacements = {}) {
     case 'dev_workflow.mdc':
       sourcePath = path.join(__dirname, '..', '.cursor', 'rules', 'dev_workflow.mdc');
       break;
+    case 'cursor_rules.mdc':
+      sourcePath = path.join(__dirname, '..', '.cursor', 'rules', 'cursor_rules.mdc');
+      break;
+    case 'self_improve.mdc':
+      sourcePath = path.join(__dirname, '..', '.cursor', 'rules', 'self_improve.mdc');
+      break;
     case 'README.md':
       sourcePath = path.join(__dirname, '..', 'README.md');
       break;
@@ -233,6 +239,12 @@ function createProjectStructure(projectName, projectDescription, projectVersion,
   
   // Copy dev_workflow.mdc
   copyTemplateFile('dev_workflow.mdc', path.join(targetDir, '.cursor', 'rules', 'dev_workflow.mdc'));
+  
+  // Copy cursor_rules.mdc
+  copyTemplateFile('cursor_rules.mdc', path.join(targetDir, '.cursor', 'rules', 'cursor_rules.mdc'));
+  
+  // Copy self_improve.mdc
+  copyTemplateFile('self_improve.mdc', path.join(targetDir, '.cursor', 'rules', 'self_improve.mdc'));
   
   // Copy scripts/dev.js
   copyTemplateFile('dev.js', path.join(targetDir, 'scripts', 'dev.js'));

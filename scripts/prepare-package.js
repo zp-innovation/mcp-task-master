@@ -3,6 +3,12 @@
 /**
  * This script prepares the package for publication to NPM.
  * It ensures all necessary files are included and properly configured.
+ * 
+ * Additional options:
+ * --patch: Increment patch version (default)
+ * --minor: Increment minor version
+ * --major: Increment major version
+ * --version=x.y.z: Set specific version
  */
 
 import fs from 'fs';
@@ -26,6 +32,16 @@ const COLORS = {
   magenta: '\x1b[35m',
   cyan: '\x1b[36m'
 };
+
+// Parse command line arguments
+const args = process.argv.slice(2);
+const versionBump = args.includes('--major') ? 'major' : 
+                    args.includes('--minor') ? 'minor' : 
+                    'patch';
+
+// Check for explicit version
+const versionArg = args.find(arg => arg.startsWith('--version='));
+const explicitVersion = versionArg ? versionArg.split('=')[1] : null;
 
 // Log function with color support
 function log(level, ...args) {
@@ -63,10 +79,43 @@ function syncTemplateFiles() {
   return true;
 }
 
+// Function to increment version
+function incrementVersion(currentVersion, type = 'patch') {
+  const [major, minor, patch] = currentVersion.split('.').map(Number);
+  
+  switch (type) {
+    case 'major':
+      return `${major + 1}.0.0`;
+    case 'minor':
+      return `${major}.${minor + 1}.0`;
+    case 'patch':
+    default:
+      return `${major}.${minor}.${patch + 1}`;
+  }
+}
+
 // Main function to prepare the package
 function preparePackage() {
   const rootDir = path.join(__dirname, '..');
   log('info', `Preparing package in ${rootDir}`);
+  
+  // Update version in package.json
+  const packageJsonPath = path.join(rootDir, 'package.json');
+  const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
+  const currentVersion = packageJson.version;
+  
+  let newVersion;
+  if (explicitVersion) {
+    newVersion = explicitVersion;
+    log('info', `Setting version to specified ${newVersion} (was ${currentVersion})`);
+  } else {
+    newVersion = incrementVersion(currentVersion, versionBump);
+    log('info', `Incrementing ${versionBump} version to ${newVersion} (was ${currentVersion})`);
+  }
+  
+  packageJson.version = newVersion;
+  fs.writeFileSync(packageJsonPath, JSON.stringify(packageJson, null, 2));
+  log('success', `Updated package.json version to ${newVersion}`);
   
   // Check for required files
   const requiredFiles = [
@@ -78,7 +127,9 @@ function preparePackage() {
     'assets/env.example',
     'assets/gitignore',
     'assets/example_prd.txt',
-    '.cursor/rules/dev_workflow.mdc'
+    '.cursor/rules/dev_workflow.mdc',
+    '.cursor/rules/cursor_rules.mdc',
+    '.cursor/rules/self_improve.mdc'
   ];
   
   let allFilesExist = true;
@@ -134,7 +185,8 @@ function preparePackage() {
     log('error', 'Failed to make scripts executable:', error.message);
   }
   
-  log('success', 'Package preparation completed successfully!');
+  log('success', `Package preparation completed successfully! 🎉`);
+  log('success', `Version updated to ${newVersion}`);
   log('info', 'You can now publish the package with:');
   log('info', '  npm publish');
 }
