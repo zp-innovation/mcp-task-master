@@ -19,7 +19,7 @@
  *   4) set-status --id=4 --status=done
  *      -> Updates a single task's status to done (or pending, deferred, in-progress, etc.).
  *      -> Supports comma-separated IDs for updating multiple tasks: --id=1,2,3,1.1,1.2
- *
+ *      -> If you set the status of a parent task to done, all its subtasks will be set to done.
  *   5) list
  *      -> Lists tasks in a brief console view (ID, title, status).
  *
@@ -52,6 +52,11 @@
  *         --file, -f <path>: Use alternative tasks.json file instead of default
  *         --research, -r: Use Perplexity AI for research-backed complexity analysis
  *
+ *   8) clear-subtasks
+ *      -> Clears subtasks from specified tasks
+ *      -> Supports comma-separated IDs for clearing multiple tasks: --id=1,2,3,1.1,1.2
+ *      -> Use --all to clear subtasks from all tasks
+ *
  * Usage examples:
  *   node dev.js parse-prd --input=sample-prd.txt
  *   node dev.js parse-prd --input=sample-prd.txt --tasks=10
@@ -67,6 +72,7 @@
  *   node dev.js analyze-complexity --output=custom-report.json
  *   node dev.js analyze-complexity --threshold=6 --model=claude-3.7-sonnet
  *   node dev.js analyze-complexity --research
+ *   node dev.js clear-subtasks --id=1,2,3 --all
  */
 
 import fs from 'fs';
@@ -527,6 +533,11 @@ async function updateTasks(tasksPath, fromId, prompt) {
 
       writeJSON(tasksPath, data);
       log('info', "Tasks updated successfully.");
+      
+      // Add call to generate task files
+      log('info', "Regenerating task files...");
+      await generateTaskFiles(tasksPath, path.dirname(tasksPath));
+      
     } catch (parseError) {
       log('error', "Failed to parse Claude's response as JSON:", parseError);
       log('debug', "Response content:", fullResponse);
@@ -665,6 +676,10 @@ function setTaskStatus(tasksPath, taskIdInput, newStatus) {
     writeJSON(tasksPath, data);
     log('info', `Updated subtask ${parentId}.${subtaskId} status from '${oldStatus}' to '${newStatus}'`);
     
+    // Add call to generate task files
+    log('info', "Regenerating task files...");
+    generateTaskFiles(tasksPath, path.dirname(tasksPath));
+    
     return;
   }
 
@@ -700,6 +715,10 @@ function setTaskStatus(tasksPath, taskIdInput, newStatus) {
   // Save the changes
   writeJSON(tasksPath, data);
   log('info', `Updated task ${taskId} status from '${oldStatus}' to '${newStatus}'`);
+  
+  // Add call to generate task files
+  log('info', "Regenerating task files...");
+  generateTaskFiles(tasksPath, path.dirname(tasksPath));
 }
 
 //
@@ -1711,6 +1730,36 @@ async function main() {
       await analyzeTaskComplexity(options);
     });
 
+  program
+    .command('clear-subtasks')
+    .description('Clear subtasks from specified tasks')
+    .option('-f, --file <file>', 'Path to the tasks file', 'tasks/tasks.json')
+    .option('-i, --id <ids>', 'Task IDs (comma-separated) to clear subtasks from')
+    .option('--all', 'Clear subtasks from all tasks')
+    .action(async (options) => {
+      const tasksPath = options.file;
+      const taskIds = options.id;
+      const all = options.all;
+
+      if (!taskIds && !all) {
+        console.error(chalk.red('Error: Please specify task IDs with --id=<ids> or use --all to clear all tasks'));
+        process.exit(1);
+      }
+
+      if (all) {
+        // If --all is specified, get all task IDs
+        const data = readJSON(tasksPath);
+        if (!data || !data.tasks) {
+          console.error(chalk.red('Error: No valid tasks found'));
+          process.exit(1);
+        }
+        const allIds = data.tasks.map(t => t.id).join(',');
+        clearSubtasks(tasksPath, allIds);
+      } else {
+        clearSubtasks(tasksPath, taskIds);
+      }
+    });
+
   await program.parseAsync(process.argv);
 }
 
@@ -2319,6 +2368,57 @@ function findTaskInComplexityReport(report, taskId) {
   }
   
   return report.complexityAnalysis.find(task => task.taskId === taskId);
+}
+
+//
+// Clear subtasks from tasks
+//
+function clearSubtasks(tasksPath, taskIds) {
+  log('info', `Reading tasks from ${tasksPath}...`);
+  const data = readJSON(tasksPath);
+  if (!data || !data.tasks) {
+    log('error', "No valid tasks found.");
+    process.exit(1);
+  }
+
+  // Handle multiple task IDs (comma-separated)
+  const taskIdArray = taskIds.split(',').map(id => id.trim());
+  let clearedCount = 0;
+
+  taskIdArray.forEach(taskId => {
+    const id = parseInt(taskId, 10);
+    if (isNaN(id)) {
+      log('error', `Invalid task ID: ${taskId}`);
+      return;
+    }
+
+    const task = data.tasks.find(t => t.id === id);
+    if (!task) {
+      log('error', `Task ${id} not found`);
+      return;
+    }
+
+    if (!task.subtasks || task.subtasks.length === 0) {
+      log('info', `Task ${id} has no subtasks to clear`);
+      return;
+    }
+
+    const subtaskCount = task.subtasks.length;
+    task.subtasks = [];
+    clearedCount++;
+    log('info', `Cleared ${subtaskCount} subtasks from task ${id}`);
+  });
+
+  if (clearedCount > 0) {
+    writeJSON(tasksPath, data);
+    log('info', `Successfully cleared subtasks from ${clearedCount} task(s)`);
+
+    // Regenerate task files to reflect changes
+    log('info', "Regenerating task files...");
+    generateTaskFiles(tasksPath, path.dirname(tasksPath));
+  } else {
+    log('info', "No subtasks were cleared");
+  }
 }
 
 main().catch(err => {
