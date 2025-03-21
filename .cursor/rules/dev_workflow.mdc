@@ -11,6 +11,7 @@ alwaysApply: true
   - Select tasks based on dependencies (all marked 'done'), priority level, and ID order
   - Clarify tasks by checking task files in tasks/ directory or asking for user input
   - Break down complex tasks using `node scripts/dev.js expand --id=<id>` with appropriate flags
+  - Clear existing subtasks if needed using `node scripts/dev.js clear-subtasks --id=<id>` before regenerating
   - Implement code following task details, dependencies, and project standards
   - Verify tasks according to test strategies before marking as complete
   - Mark completed tasks with `node scripts/dev.js set-status --id=<id> --status=done`
@@ -33,6 +34,7 @@ alwaysApply: true
   - Use `--prompt="<context>"` to provide additional context when needed
   - Review and adjust generated subtasks as necessary
   - Use `--all` flag to expand multiple pending tasks at once
+  - If subtasks need regeneration, clear them first with `clear-subtasks` command
 
 - **Implementation Drift Handling**
   - When implementation differs significantly from planned approach
@@ -125,6 +127,21 @@ alwaysApply: true
     - `--research, -r`: Use Perplexity AI for research-backed analysis
   - Example: `node scripts/dev.js analyze-complexity --research`
   - Notes: Report includes complexity scores, recommended subtasks, and tailored prompts.
+
+- **Command Reference: clear-subtasks**
+  - Syntax: `node scripts/dev.js clear-subtasks --id=<id>`
+  - Description: Removes subtasks from specified tasks to allow regeneration
+  - Parameters:
+    - `--id=<id>`: ID or comma-separated IDs of tasks to clear subtasks from
+    - `--all`: Clear subtasks from all tasks
+  - Examples:
+    - `node scripts/dev.js clear-subtasks --id=3`
+    - `node scripts/dev.js clear-subtasks --id=1,2,3`
+    - `node scripts/dev.js clear-subtasks --all`
+  - Notes: 
+    - Task files are automatically regenerated after clearing subtasks
+    - Can be combined with expand command to immediately generate new subtasks
+    - Works with both parent tasks and individual subtasks
 
 - **Task Structure Fields**
   - **id**: Unique identifier for the task (Example: `1`)

@@ -300,6 +300,18 @@ or
 npm run dev -- expand --all --research
 ```
 
+### Clear Subtasks
+```bash
+# Clear subtasks from a specific task
+npm run dev -- clear-subtasks --id=<id>
+
+# Clear subtasks from multiple tasks
+npm run dev -- clear-subtasks --id=1,2,3
+
+# Clear subtasks from all tasks
+npm run dev -- clear-subtasks --all
+```
+
 ## Task Structure
 
 Tasks in tasks.json have the following structure:
@@ -346,6 +358,11 @@ What's the next task I should work on? Please consider dependencies and prioriti
 ### Implementing a specific task
 ```
 I'd like to implement task 4. Can you help me understand what needs to be done and how to approach it?
+```
+
+### Managing subtasks
+```
+I need to regenerate the subtasks for task 3 with a different approach. Can you help me clear and regenerate them?
 ```
 
 ### Handling changes

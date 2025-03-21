@@ -13,6 +13,7 @@ In an AI-driven development process—particularly with tools like [Cursor](http
 5. **Set task status**—mark tasks as `done`, `pending`, or `deferred` based on progress.
 6. **Expand** tasks with subtasks—break down complex tasks into smaller, more manageable subtasks.
 7. **Research-backed subtask generation**—use Perplexity AI to generate more informed and contextually relevant subtasks.
+8. **Clear subtasks**—remove subtasks from specified tasks to allow regeneration or restructuring.
 
 ## Configuration
 
@@ -56,6 +57,7 @@ The script can be configured through environment variables in a `.env` file at t
    - `generate`: Create individual task files
    - `set-status`: Change a task's status
    - `expand`: Add subtasks to a task or all tasks
+   - `clear-subtasks`: Remove subtasks from specified tasks
 
    Run `node scripts/dev.js` without arguments to see detailed usage information.
 
@@ -148,12 +150,26 @@ node scripts/dev.js expand --id=3 --research
 node scripts/dev.js expand --all --research
 ```
 
+## Clearing Subtasks
+
+The `clear-subtasks` command allows you to remove subtasks from specified tasks:
+
+```bash
+# Clear subtasks from a specific task
+node scripts/dev.js clear-subtasks --id=3
+
+# Clear subtasks from multiple tasks
+node scripts/dev.js clear-subtasks --id=1,2,3
+
+# Clear subtasks from all tasks
+node scripts/dev.js clear-subtasks --all
+```
+
 Notes:
-- Tasks marked as 'done' or 'completed' are always skipped
-- By default, tasks that already have subtasks are skipped unless `--force` is used
-- Subtasks include title, description, dependencies, and acceptance criteria
-- The `--research` flag uses Perplexity AI to generate more informed and contextually relevant subtasks
-- If Perplexity API is unavailable, the script will fall back to using Anthropic's Claude
+- After clearing subtasks, task files are automatically regenerated
+- This is useful when you want to regenerate subtasks with a different approach
+- Can be combined with the `expand` command to immediately generate new subtasks
+- Works with both parent tasks and individual subtasks
 
 ## AI Integration
 
