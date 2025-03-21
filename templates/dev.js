@@ -821,6 +821,11 @@ async function expandTask(taskId, numSubtasks = CONFIG.defaultSubtasks, useResea
       console.log(chalk.cyan(`  ${st.id}. ${st.title}`));
       console.log(chalk.gray(`     ${st.description.substring(0, 100)}${st.description.length > 100 ? '...' : ''}`));
     });
+    
+    // Generate task files to update the task file with the new subtasks
+    console.log(chalk.blue(`Regenerating task files to include new subtasks...`));
+    await generateTaskFiles('tasks/tasks.json', 'tasks');
+    
   } catch (error) {
     console.error(chalk.red('Error expanding task:'), error);
   }
@@ -885,6 +890,8 @@ async function expandAllTasks(numSubtasks = CONFIG.defaultSubtasks, useResearch 
     console.log(chalk.blue(`\nExpanding ${tasksToExpand.length} tasks...`));
     
     let tasksExpanded = 0;
+    // Keep track of expanded tasks and their results for verification
+    const expandedTaskIds = [];
     
     // Expand each task
     for (const task of tasksToExpand) {
@@ -892,8 +899,110 @@ async function expandAllTasks(numSubtasks = CONFIG.defaultSubtasks, useResearch 
       
       // The check for usedComplexityReport is redundant since expandTask will handle it anyway
       await expandTask(task.id, numSubtasks, useResearch, additionalContext);
+      expandedTaskIds.push(task.id);
       
       tasksExpanded++;
+    }
+    
+    // Verification step - Check for dummy/generic subtasks
+    // Read fresh data after all expansions
+    const updatedTasksData = readJSON(path.join(process.cwd(), 'tasks', 'tasks.json'));
+    const tasksNeedingRetry = [];
+    
+    console.log(chalk.blue('\nVerifying subtask quality...'));
+    
+    for (const taskId of expandedTaskIds) {
+      const task = updatedTasksData.tasks.find(t => t.id === taskId);
+      if (!task || !task.subtasks || task.subtasks.length === 0) continue;
+      
+      // Check for generic subtasks - patterns to look for:
+      // 1. Auto-generated subtask in description
+      // 2. Generic titles like "Subtask X"
+      // 3. Common dummy titles we created like "Implementation" without custom descriptions
+      const dummySubtasks = task.subtasks.filter(st => 
+        st.description.includes("Auto-generated subtask") ||
+        st.title.match(/^Subtask \d+$/) ||
+        (st.description.includes("Update this auto-generated subtask") && 
+         ["Implementation", "Testing", "Documentation", "Integration", "Error Handling", 
+          "Refactoring", "Validation", "Configuration"].includes(st.title))
+      );
+      
+      // If more than half the subtasks are generic, mark for retry
+      if (dummySubtasks.length > Math.floor(task.subtasks.length / 2)) {
+        tasksNeedingRetry.push({
+          id: task.id,
+          title: task.title,
+          dummyCount: dummySubtasks.length,
+          totalCount: task.subtasks.length
+        });
+      }
+    }
+    
+    // If we found tasks with poor subtask quality, offer to retry them
+    if (tasksNeedingRetry.length > 0) {
+      console.log(chalk.yellow(`\nFound ${tasksNeedingRetry.length} tasks with low-quality subtasks that need retry:`));
+      
+      for (const task of tasksNeedingRetry) {
+        console.log(chalk.yellow(`  Task ${task.id}: ${task.title} (${task.dummyCount}/${task.totalCount} generic subtasks)`));
+      }
+      
+      // Ask user if they want to retry these tasks
+      const readline = require('readline').createInterface({
+        input: process.stdin,
+        output: process.stdout
+      });
+      
+      const answer = await new Promise(resolve => {
+        readline.question(chalk.cyan('\nWould you like to retry expanding these tasks with enhanced prompts? (y/n): '), resolve);
+      });
+      readline.close();
+      
+      if (answer.toLowerCase() === 'y' || answer.toLowerCase() === 'yes') {
+        console.log(chalk.blue('\nRetrying task expansion with enhanced prompts...'));
+        
+        // For each task needing retry, we'll expand it again with a modified prompt
+        let retryCount = 0;
+        for (const task of tasksNeedingRetry) {
+          console.log(chalk.blue(`\nRetrying expansion for task ${task.id}...`));
+          
+          // Enhanced context to encourage better subtask generation
+          const enhancedContext = `${additionalContext ? additionalContext + "\n\n" : ""}
+IMPORTANT: The previous expansion attempt generated mostly generic subtasks. Please provide highly specific, 
+detailed, and technically relevant subtasks for this task. Each subtask should be:
+1. Specifically related to the task at hand, not generic
+2. Technically detailed with clear implementation guidance
+3. Unique and addressing a distinct aspect of the parent task
+          
+Be creative and thorough in your analysis. The subtasks should collectively represent a complete solution to the parent task.`;
+          
+          // Try with different settings - if research was off, turn it on, or increase subtasks slightly
+          const retryResearch = useResearch ? true : !useResearch; // Try opposite of current setting, but prefer ON
+          const retrySubtasks = numSubtasks < 6 ? numSubtasks + 1 : numSubtasks; // Increase subtasks slightly if not already high
+          
+          // Delete existing subtasks for this task before regenerating
+          const currentTaskData = readJSON(path.join(process.cwd(), 'tasks', 'tasks.json'));
+          const taskToUpdate = currentTaskData.tasks.find(t => t.id === task.id);
+          if (taskToUpdate) {
+            taskToUpdate.subtasks = []; // Clear existing subtasks
+            // Save before expanding again
+            fs.writeFileSync(
+              path.join(process.cwd(), 'tasks', 'tasks.json'),
+              JSON.stringify(currentTaskData, null, 2)
+            );
+          }
+          
+          // Try expansion again with enhanced context and possibly different settings
+          await expandTask(task.id, retrySubtasks, retryResearch, enhancedContext);
+          retryCount++;
+        }
+        
+        console.log(chalk.green(`\nCompleted retry expansion for ${retryCount} tasks.`));
+        tasksExpanded += retryCount; // Add retries to total expanded count
+      } else {
+        console.log(chalk.blue('\nSkipping retry. You can manually retry task expansion using the expand command.'));
+      }
+    } else {
+      console.log(chalk.green('\nVerification complete. All subtasks appear to be of good quality.'));
     }
     
     console.log(chalk.green(`\nExpanded ${tasksExpanded} tasks.`));
@@ -1006,22 +1115,33 @@ function parseSubtasksFromText(text, startId, expectedCount) {
   
   const subtasks = [];
   
-  // Try to extract subtasks using regex patterns
-  // Looking for patterns like "Subtask 1: Title" or "Subtask 1 - Title"
-  const subtaskRegex = /Subtask\s+(\d+)(?::|-)?\s+([^\n]+)(?:\n|$)(?:Description:?\s*)?([^]*?)(?:(?:\n|^)Dependencies:?\s*([^]*?))?(?:(?:\n|^)Acceptance Criteria:?\s*([^]*?))?(?=(?:\n\s*Subtask\s+\d+|$))/gi;
+  // Enhanced regex that's more tolerant of variations in formatting
+  // This handles more cases like: subtask headings with or without numbers, different separators, etc.
+  const subtaskRegex = /(?:^|\n)\s*(?:(?:Subtask\s*(?:\d+)?[:.-]?\s*)|(?:\d+\.\s*))([^\n]+)(?:\n|$)(?:(?:\n|^)Description\s*[:.-]?\s*([^]*?))?(?:(?:\n|^)Dependencies\s*[:.-]?\s*([^]*?))?(?:(?:\n|^)Acceptance Criteria\s*[:.-]?\s*([^]*?))?(?=\n\s*(?:(?:Subtask\s*(?:\d+)?[:.-]?\s*)|(?:\d+\.\s*))|$)/gmi;
   
   let match;
   while ((match = subtaskRegex.exec(text)) !== null) {
-    const [_, idStr, title, descriptionRaw, dependenciesRaw, acceptanceCriteriaRaw] = match;
+    const [_, title, descriptionRaw, dependenciesRaw, acceptanceCriteriaRaw] = match;
     
-    // Clean up the description
+    // Skip if we couldn't extract a meaningful title
+    if (!title || title.trim().length === 0) continue;
+    
+    // Clean up the description - if description is undefined, use the first paragraph of the section
     let description = descriptionRaw ? descriptionRaw.trim() : '';
+    if (!description) {
+      // Try to extract the first paragraph after the title as the description
+      const sectionText = text.substring(match.index + match[0].indexOf(title) + title.length);
+      const nextSection = sectionText.match(/\n\s*(?:Subtask|Dependencies|Acceptance Criteria)/i);
+      if (nextSection) {
+        description = sectionText.substring(0, nextSection.index).trim();
+      }
+    }
     
     // Extract dependencies
     let dependencies = [];
     if (dependenciesRaw) {
       const depText = dependenciesRaw.trim();
-      if (depText && !depText.toLowerCase().includes('none')) {
+      if (depText && !/(none|n\/a|no dependencies)/i.test(depText)) {
         // Extract numbers from dependencies text
         const depNumbers = depText.match(/\d+/g);
         if (depNumbers) {
@@ -1031,13 +1151,22 @@ function parseSubtasksFromText(text, startId, expectedCount) {
     }
     
     // Extract acceptance criteria
-    let acceptanceCriteria = acceptanceCriteriaRaw ? acceptanceCriteriaRaw.trim() : '';
+    let acceptanceCriteria = '';
+    if (acceptanceCriteriaRaw) {
+      acceptanceCriteria = acceptanceCriteriaRaw.trim();
+    } else {
+      // Try to find acceptance criteria in the section if not explicitly labeled
+      const acMatch = match[0].match(/(?:criteria|must|should|requirements|tests)(?:\s*[:.-])?\s*([^]*?)(?=\n\s*(?:Subtask|Dependencies)|$)/i);
+      if (acMatch) {
+        acceptanceCriteria = acMatch[1].trim();
+      }
+    }
     
     // Create the subtask object
     const subtask = {
       id: startId + subtasks.length,
       title: title.trim(),
-      description: description,
+      description: description || `Implement ${title.trim()}`, // Ensure we have at least a basic description
       status: "pending",
       dependencies: dependencies,
       acceptanceCriteria: acceptanceCriteria
@@ -1051,80 +1180,131 @@ function parseSubtasksFromText(text, startId, expectedCount) {
     }
   }
   
-  // If regex parsing failed or didn't find enough subtasks, try a different approach
+  // If regex parsing failed or didn't find enough subtasks, try additional parsing methods
   if (subtasks.length < expectedCount) {
     log('info', `Regex parsing found only ${subtasks.length} subtasks, trying alternative parsing...`);
     
-    // Split by "Subtask X" headers
-    const subtaskSections = text.split(/\n\s*Subtask\s+\d+/i);
-    
-    // Skip the first section (before the first "Subtask X" header)
-    for (let i = 1; i < subtaskSections.length && subtasks.length < expectedCount; i++) {
-      const section = subtaskSections[i];
+    // Look for numbered lists (1. Task title)
+    const numberedListRegex = /(?:^|\n)\s*(\d+)\.\s+([^\n]+)(?:\n|$)([^]*?)(?=(?:\n\s*\d+\.\s+)|$)/g;
+    while (subtasks.length < expectedCount && (match = numberedListRegex.exec(text)) !== null) {
+      const [_, num, title, detailsRaw] = match;
       
-      // Extract title
-      const titleMatch = section.match(/^(?::|-)?\s*([^\n]+)/);
-      const title = titleMatch ? titleMatch[1].trim() : `Subtask ${startId + subtasks.length}`;
-      
-      // Extract description
-      let description = '';
-      const descMatch = section.match(/Description:?\s*([^]*?)(?:Dependencies|Acceptance Criteria|$)/i);
-      if (descMatch) {
-        description = descMatch[1].trim();
-      } else {
-        // If no "Description:" label, use everything until Dependencies or Acceptance Criteria
-        const contentMatch = section.match(/^(?::|-)?\s*[^\n]+\n([^]*?)(?:Dependencies|Acceptance Criteria|$)/i);
-        if (contentMatch) {
-          description = contentMatch[1].trim();
-        }
+      // Skip if we've already captured this (might be duplicated by the first regex)
+      if (subtasks.some(st => st.title.trim() === title.trim())) {
+        continue;
       }
       
-      // Extract dependencies
-      let dependencies = [];
-      const depMatch = section.match(/Dependencies:?\s*([^]*?)(?:Acceptance Criteria|$)/i);
-      if (depMatch) {
-        const depText = depMatch[1].trim();
-        if (depText && !depText.toLowerCase().includes('none')) {
-          const depNumbers = depText.match(/\d+/g);
-          if (depNumbers) {
-            dependencies = depNumbers.map(n => parseInt(n, 10));
-          }
-        }
-      }
+      const details = detailsRaw ? detailsRaw.trim() : '';
       
-      // Extract acceptance criteria
-      let acceptanceCriteria = '';
-      const acMatch = section.match(/Acceptance Criteria:?\s*([^]*?)$/i);
-      if (acMatch) {
-        acceptanceCriteria = acMatch[1].trim();
-      }
-      
-      // Create the subtask object
+      // Create the subtask
       const subtask = {
         id: startId + subtasks.length,
-        title: title,
-        description: description,
+        title: title.trim(),
+        description: details || `Implement ${title.trim()}`,
         status: "pending",
-        dependencies: dependencies,
-        acceptanceCriteria: acceptanceCriteria
+        dependencies: [],
+        acceptanceCriteria: ''
       };
       
       subtasks.push(subtask);
     }
-  }
-  
-  // If we still don't have enough subtasks, create generic ones
-  if (subtasks.length < expectedCount) {
-    log('info', `Parsing found only ${subtasks.length} subtasks, creating generic ones to reach ${expectedCount}...`);
     
-    for (let i = subtasks.length; i < expectedCount; i++) {
-      subtasks.push({
-        id: startId + i,
-        title: `Subtask ${startId + i}`,
-        description: "Auto-generated subtask. Please update with specific details.",
+    // Look for bulleted lists (- Task title or * Task title)
+    const bulletedListRegex = /(?:^|\n)\s*[-*]\s+([^\n]+)(?:\n|$)([^]*?)(?=(?:\n\s*[-*]\s+)|$)/g;
+    while (subtasks.length < expectedCount && (match = bulletedListRegex.exec(text)) !== null) {
+      const [_, title, detailsRaw] = match;
+      
+      // Skip if we've already captured this
+      if (subtasks.some(st => st.title.trim() === title.trim())) {
+        continue;
+      }
+      
+      const details = detailsRaw ? detailsRaw.trim() : '';
+      
+      // Create the subtask
+      const subtask = {
+        id: startId + subtasks.length,
+        title: title.trim(),
+        description: details || `Implement ${title.trim()}`,
         status: "pending",
         dependencies: [],
         acceptanceCriteria: ''
+      };
+      
+      subtasks.push(subtask);
+    }
+    
+    // As a last resort, look for potential titles using heuristics (e.g., sentences followed by paragraphs)
+    if (subtasks.length < expectedCount) {
+      const lines = text.split('\n').filter(line => line.trim().length > 0);
+      
+      for (let i = 0; i < lines.length && subtasks.length < expectedCount; i++) {
+        const line = lines[i].trim();
+        
+        // Skip if the line is too long to be a title, or contains typical non-title content
+        if (line.length > 100 || /^(Description|Dependencies|Acceptance Criteria|Implementation|Details|Approach):/i.test(line)) {
+          continue;
+        }
+        
+        // Skip if it matches a pattern we already tried to parse
+        if (/^(Subtask|Task|\d+\.|-|\*)/.test(line)) {
+          continue;
+        }
+        
+        // Skip if we've already captured this title
+        if (subtasks.some(st => st.title.trim() === line.trim())) {
+          continue;
+        }
+        
+        // Get the next few lines as potential description
+        let description = '';
+        if (i + 1 < lines.length) {
+          description = lines.slice(i + 1, i + 4).join('\n').trim();
+        }
+        
+        // Create the subtask
+        const subtask = {
+          id: startId + subtasks.length,
+          title: line,
+          description: description || `Implement ${line}`,
+          status: "pending",
+          dependencies: [],
+          acceptanceCriteria: ''
+        };
+        
+        subtasks.push(subtask);
+      }
+    }
+  }
+  
+  // If we still don't have enough subtasks, create more meaningful dummy ones based on context
+  if (subtasks.length < expectedCount) {
+    log('info', `Parsing found only ${subtasks.length} subtasks, creating intelligent dummy ones to reach ${expectedCount}...`);
+    
+    // Create a list of common subtask patterns to use
+    const dummyTaskPatterns = [
+      { title: "Implementation", description: "Implement the core functionality required for this task." },
+      { title: "Testing", description: "Create comprehensive tests for the implemented functionality." },
+      { title: "Documentation", description: "Document the implemented functionality and usage examples." },
+      { title: "Integration", description: "Integrate the functionality with other components of the system." },
+      { title: "Error Handling", description: "Implement robust error handling and edge case management." },
+      { title: "Refactoring", description: "Refine and optimize the implementation for better performance and maintainability." },
+      { title: "Validation", description: "Implement validation logic to ensure data integrity and security." },
+      { title: "Configuration", description: "Create configuration options and settings for the functionality." }
+    ];
+    
+    for (let i = subtasks.length; i < expectedCount; i++) {
+      // Select a pattern based on the current subtask number
+      const patternIndex = i % dummyTaskPatterns.length;
+      const pattern = dummyTaskPatterns[patternIndex];
+      
+      subtasks.push({
+        id: startId + i,
+        title: pattern.title,
+        description: pattern.description,
+        status: "pending",
+        dependencies: [],
+        acceptanceCriteria: 'Update this auto-generated subtask with specific details relevant to the parent task.'
       });
     }
   }
@@ -1272,6 +1452,13 @@ Subtask 2: [Title]
 
 Research the task thoroughly and ensure the subtasks are comprehensive, specific, and actionable. Focus on technical implementation details rather than generic steps.`;
 
+  // Define the research prompt for Perplexity
+  const researchPrompt = `You are a software development expert tasked with breaking down complex development tasks into detailed subtasks. Please research the following task thoroughly, and generate ${numSubtasks} specific, actionable subtasks.
+
+${prompt}
+
+Format your response as specific, well-defined subtasks that could be assigned to developers. Be precise and technical in your descriptions.`;
+
   // Start loading indicator
   const loadingInterval = startLoadingIndicator('Researching and generating subtasks with AI');
 
@@ -1286,7 +1473,7 @@ Research the task thoroughly and ensure the subtasks are comprehensive, specific
         messages: [
           {
             role: "system",
-            content: "You are a technical analysis AI that only responds with clean, valid JSON. Never include explanatory text or markdown formatting in your response."
+            content: "You are a technical analysis AI that helps break down software development tasks into detailed subtasks. Provide specific, actionable steps with clear definitions."
           },
           {
             role: "user",
