@@ -92,8 +92,8 @@ function copyTemplateFile(templateName, targetPath, replacements = {}) {
     case 'self_improve.mdc':
       sourcePath = path.join(__dirname, '..', '.cursor', 'rules', 'self_improve.mdc');
       break;
-    case 'README.md':
-      sourcePath = path.join(__dirname, '..', 'README.md');
+    case 'README-task-master.md':
+      sourcePath = path.join(__dirname, '..', 'README-task-master.md');
       break;
     default:
       // For other files like env.example, gitignore, etc. that don't have direct equivalents
@@ -212,7 +212,8 @@ function createProjectStructure(projectName, projectDescription, projectVersion,
       "@anthropic-ai/sdk": "^0.39.0",
       "chalk": "^4.1.2",
       "commander": "^11.1.0",
-      "dotenv": "^16.3.1"
+      "dotenv": "^16.3.1",
+      "openai": "^4.86.1"
     }
   };
   
@@ -256,7 +257,7 @@ function createProjectStructure(projectName, projectDescription, projectVersion,
   copyTemplateFile('example_prd.txt', path.join(targetDir, 'scripts', 'example_prd.txt'));
   
   // Create main README.md
-  copyTemplateFile('README.md', path.join(targetDir, 'README.md'), replacements);
+  copyTemplateFile('README-task-master.md', path.join(targetDir, 'README.md'), replacements);
   
   // Initialize git repository if git is available
   try {

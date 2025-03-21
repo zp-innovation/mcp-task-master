@@ -1,6 +1,6 @@
 ---
 description: guide the Cursor Agent in using the meta-development script (scripts/dev.js). It also defines the overall workflow for reading, updating, and generating tasks during AI-driven development.
-globs: scripts/dev.js, tasks.json, tasks/*.txt
+globs: **/*
 alwaysApply: true
 ---
 rules:

@@ -47,7 +47,7 @@
     "scripts/dev.js",
     "assets/**",
     ".cursor/**",
-    "README.md",
+    "README-task-master.md",
     "index.js"
   ]
 }

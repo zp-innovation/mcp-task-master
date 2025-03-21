@@ -7,6 +7,27 @@ A task management system for AI-driven development with Claude, designed to work
 - Node.js 14.0.0 or higher
 - Anthropic API key (Claude API)
 - Anthropic SDK version 0.39.0 or higher
+- OpenAI SDK (for Perplexity API integration, optional)
+
+## Configuration
+
+The script can be configured through environment variables in a `.env` file at the root of the project:
+
+### Required Configuration
+- `ANTHROPIC_API_KEY`: Your Anthropic API key for Claude
+
+### Optional Configuration
+- `MODEL`: Specify which Claude model to use (default: "claude-3-7-sonnet-20250219")
+- `MAX_TOKENS`: Maximum tokens for model responses (default: 4000)
+- `TEMPERATURE`: Temperature for model responses (default: 0.7)
+- `PERPLEXITY_API_KEY`: Your Perplexity API key for research-backed subtask generation
+- `PERPLEXITY_MODEL`: Specify which Perplexity model to use (default: "sonar-medium-online")
+- `DEBUG`: Enable debug logging (default: false)
+- `LOG_LEVEL`: Log level - debug, info, warn, error (default: info)
+- `DEFAULT_SUBTASKS`: Default number of subtasks when expanding (default: 3)
+- `DEFAULT_PRIORITY`: Default priority for generated tasks (default: medium)
+- `PROJECT_NAME`: Override default project name in tasks.json
+- `PROJECT_VERSION`: Override default version in tasks.json
 
 ## Installation
 
@@ -105,6 +126,7 @@ What tasks are available to work on next?
 
 The agent will:
 - Run `node scripts/dev.js list` to see all tasks
+- Run `node scripts/dev.js list --with-subtasks` to see tasks with their subtasks
 - Analyze dependencies to determine which tasks are ready to be worked on
 - Prioritize tasks based on priority level and ID order
 - Suggest the next task(s) to implement
@@ -194,6 +216,26 @@ The agent will execute:
 node scripts/dev.js expand --all
 ```
 
+For research-backed subtask generation using Perplexity AI:
+```
+Please break down task 5 using research-backed generation.
+```
+
+The agent will execute:
+```bash
+node scripts/dev.js expand --id=5 --research
+```
+
+You can also apply research-backed generation to all tasks:
+```
+Please break down all pending tasks using research-backed generation.
+```
+
+The agent will execute:
+```bash
+node scripts/dev.js expand --all --research
+```
+
 ## Manual Command Reference
 
 While the Cursor agent will handle most commands for you, you can also run them manually:
@@ -206,6 +248,21 @@ npm run parse-prd -- --input=<prd-file.txt>
 ### List Tasks
 ```bash
 npm run list
+```
+
+# List tasks with a specific status
+```bash
+npm run dev -- list --status=<status>
+```
+
+# List tasks with subtasks
+```bash
+npm run dev -- list --with-subtasks
+```
+
+# List tasks with a specific status and include subtasks
+```bash
+npm run dev -- list --status=<status> --with-subtasks
 ```
 
 ### Update Tasks
@@ -223,6 +280,8 @@ npm run generate
 npm run dev -- set-status --id=<id> --status=<status>
 ```
 
+When marking a task as "done", all of its subtasks will automatically be marked as "done" as well.
+
 ### Expand Tasks
 ```bash
 npm run dev -- expand --id=<id> --subtasks=<number> --prompt="<context>"
@@ -230,6 +289,15 @@ npm run dev -- expand --id=<id> --subtasks=<number> --prompt="<context>"
 or
 ```bash
 npm run dev -- expand --all
+```
+
+For research-backed subtask generation:
+```bash
+npm run dev -- expand --id=<id> --research
+```
+or
+```bash
+npm run dev -- expand --all --research
 ```
 
 ## Task Structure

@@ -662,6 +662,17 @@ function setTaskStatus(tasksPath, taskIdInput, newStatus) {
   const oldStatus = task.status || 'pending';
   task.status = newStatus;
   
+  // Automatically update subtasks if the parent task is being marked as done
+  if (newStatus === 'done' && task.subtasks && Array.isArray(task.subtasks) && task.subtasks.length > 0) {
+    log('info', `Task ${taskId} has ${task.subtasks.length} subtasks that will be marked as done too.`);
+    
+    task.subtasks.forEach(subtask => {
+      const oldSubtaskStatus = subtask.status || 'pending';
+      subtask.status = newStatus;
+      log('info', `  └─ Updated subtask ${taskId}.${subtask.id} status from '${oldSubtaskStatus}' to '${newStatus}'`);
+    });
+  }
+  
   // Save the changes
   writeJSON(tasksPath, data);
   log('info', `Updated task ${taskId} status from '${oldStatus}' to '${newStatus}'`);

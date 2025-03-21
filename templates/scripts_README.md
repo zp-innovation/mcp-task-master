@@ -56,6 +56,30 @@ The script can be configured through environment variables in a `.env` file at t
 
    Run `node scripts/dev.js` without arguments to see detailed usage information.
 
+## Setting Task Status
+
+The `set-status` command allows you to change a task's status:
+
+```bash
+# Mark a task as done
+node scripts/dev.js set-status --id=3 --status=done
+
+# Mark a task as pending
+node scripts/dev.js set-status --id=4 --status=pending
+
+# Mark a specific subtask as done
+node scripts/dev.js set-status --id=3.1 --status=done
+
+# Mark multiple tasks at once
+node scripts/dev.js set-status --id=1,2,3 --status=done
+```
+
+Notes:
+- When marking a parent task as "done", all of its subtasks will automatically be marked as "done" as well
+- Common status values are 'done', 'pending', and 'deferred', but any string is accepted
+- You can specify multiple task IDs by separating them with commas
+- Subtask IDs are specified using the format `parentId.subtaskId` (e.g., `3.1`)
+
 ## Expanding Tasks
 
 The `expand` command allows you to break down tasks into subtasks for more detailed implementation:

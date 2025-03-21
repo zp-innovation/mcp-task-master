@@ -280,6 +280,8 @@ npm run generate
 npm run dev -- set-status --id=<id> --status=<status>
 ```
 
+When marking a task as "done", all of its subtasks will automatically be marked as "done" as well.
+
 ### Expand Tasks
 ```bash
 npm run dev -- expand --id=<id> --subtasks=<number> --prompt="<context>"
