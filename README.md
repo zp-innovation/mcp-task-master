@@ -39,7 +39,7 @@ npm install task-master-ai
 ### Initialize a new project
 
 ```bash
-npx claude-task-init
+npx task-master-ai
 ```
 
 This will prompt you for project details and set up a new project with the necessary files and structure.
@@ -51,7 +51,7 @@ This will prompt you for project details and set up a new project with the neces
 
 ## Troubleshooting
 
-### If `npx claude-task-init` doesn't respond:
+### If `npx task-master-ai` doesn't respond:
 
 Try running it with Node directly:
 
