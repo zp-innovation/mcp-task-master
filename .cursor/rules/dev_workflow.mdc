@@ -25,6 +25,7 @@ alwaysApply: true
 - **Task Complexity Analysis**
   - Run `node scripts/dev.js analyze-complexity --research` for comprehensive analysis
   - Review complexity report in scripts/task-complexity-report.json
+  - Or use `node scripts/dev.js complexity-report` for a formatted, readable version of the report
   - Focus on tasks with highest complexity scores (8-10) for detailed breakdown
   - Use analysis results to determine appropriate subtask allocation
   - Note that reports are automatically used by the expand command
@@ -243,3 +244,15 @@ alwaysApply: true
     - Eliminates self-dependencies (tasks depending on themselves)
     - Regenerates task files with corrected dependencies
     - Provides detailed report of all fixes made
+
+- **Command Reference: complexity-report**
+  - Syntax: `node scripts/dev.js complexity-report [options]`
+  - Description: Displays the task complexity analysis report in a formatted, easy-to-read way
+  - Parameters:
+    - `--file=<path>, -f`: Path to the complexity report file (default: 'scripts/task-complexity-report.json')
+  - Example: `node scripts/dev.js complexity-report`
+  - Notes: 
+    - Shows tasks organized by complexity score with recommended actions
+    - Provides complexity distribution statistics
+    - Displays ready-to-use expansion commands for complex tasks
+    - If no report exists, offers to generate one interactively
