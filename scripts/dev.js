@@ -2938,7 +2938,7 @@ function displayHelp() {
     ));
     
     const commandTable = new Table({
-      colWidths: [20, 40, 50],
+      colWidths: [25, 40, 45],
       chars: {
         'top': '', 'top-mid': '', 'top-left': '', 'top-right': '',
         'bottom': '', 'bottom-mid': '', 'bottom-left': '', 'bottom-right': '',
