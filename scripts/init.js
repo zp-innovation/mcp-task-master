@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-console.log('Starting claude-task-init...');
+console.log('Starting task-master-ai...');
 
 import fs from 'fs';
 import path from 'path';
