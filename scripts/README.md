@@ -201,6 +201,92 @@ The script supports different logging levels controlled by the `LOG_LEVEL` envir
 
 When `DEBUG=true` is set, debug logs are also written to a `dev-debug.log` file in the project root.
 
+## Managing Task Dependencies
+
+The `add-dependency` and `remove-dependency` commands allow you to manage task dependencies:
+
+```bash
+# Add a dependency to a task
+node scripts/dev.js add-dependency --id=<id> --depends-on=<id>
+
+# Remove a dependency from a task
+node scripts/dev.js remove-dependency --id=<id> --depends-on=<id>
+```
+
+These commands:
+
+1. **Allow precise dependency management**:
+   - Add dependencies between tasks with automatic validation
+   - Remove dependencies when they're no longer needed
+   - Update task files automatically after changes
+
+2. **Include validation checks**:
+   - Prevent circular dependencies (a task depending on itself)
+   - Prevent duplicate dependencies
+   - Verify that both tasks exist before adding/removing dependencies
+   - Check if dependencies exist before attempting to remove them
+
+3. **Provide clear feedback**:
+   - Success messages confirm when dependencies are added/removed
+   - Error messages explain why operations failed (if applicable)
+
+4. **Automatically update task files**:
+   - Regenerates task files to reflect dependency changes
+   - Ensures tasks and their files stay synchronized
+
+## Dependency Validation and Fixing
+
+The script provides two specialized commands to ensure task dependencies remain valid and properly maintained:
+
+### Validating Dependencies
+
+The `validate-dependencies` command allows you to check for invalid dependencies without making changes:
+
+```bash
+# Check for invalid dependencies in tasks.json
+node scripts/dev.js validate-dependencies
+
+# Specify a different tasks file
+node scripts/dev.js validate-dependencies --file=custom-tasks.json
+```
+
+This command:
+- Scans all tasks and subtasks for non-existent dependencies
+- Identifies potential self-dependencies (tasks referencing themselves)
+- Reports all found issues without modifying files
+- Provides a comprehensive summary of dependency state
+- Gives detailed statistics on task dependencies
+
+Use this command to audit your task structure before applying fixes.
+
+### Fixing Dependencies
+
+The `fix-dependencies` command proactively finds and fixes all invalid dependencies:
+
+```bash
+# Find and fix all invalid dependencies
+node scripts/dev.js fix-dependencies
+
+# Specify a different tasks file
+node scripts/dev.js fix-dependencies --file=custom-tasks.json
+```
+
+This command:
+1. **Validates all dependencies** across tasks and subtasks
+2. **Automatically removes**:
+   - References to non-existent tasks and subtasks
+   - Self-dependencies (tasks depending on themselves)
+3. **Fixes issues in both**:
+   - The tasks.json data structure
+   - Individual task files during regeneration
+4. **Provides a detailed report**:
+   - Types of issues fixed (non-existent vs. self-dependencies)
+   - Number of tasks affected (tasks vs. subtasks)
+   - Where fixes were applied (tasks.json vs. task files)
+   - List of all individual fixes made
+
+This is especially useful when tasks have been deleted or IDs have changed, potentially breaking dependency chains.
+
 ## Analyzing Task Complexity
 
 The `analyze-complexity` command allows you to automatically assess task complexity and generate expansion recommendations:
@@ -341,36 +427,3 @@ This command:
    - For subtasks, provides a link to view the parent task
 
 This command is particularly useful when you need to examine a specific task in detail before implementing it or when you want to check the status and details of a particular task.
-
-## Managing Task Dependencies
-
-The `add-dependency` and `remove-dependency` commands allow you to manage task dependencies:
-
-```bash
-# Add a dependency to a task
-node scripts/dev.js add-dependency --id=<id> --depends-on=<id>
-
-# Remove a dependency from a task
-node scripts/dev.js remove-dependency --id=<id> --depends-on=<id>
-```
-
-These commands:
-
-1. **Allow precise dependency management**:
-   - Add dependencies between tasks with automatic validation
-   - Remove dependencies when they're no longer needed
-   - Update task files automatically after changes
-
-2. **Include validation checks**:
-   - Prevent circular dependencies (a task depending on itself)
-   - Prevent duplicate dependencies
-   - Verify that both tasks exist before adding/removing dependencies
-   - Check if dependencies exist before attempting to remove them
-
-3. **Provide clear feedback**:
-   - Success messages confirm when dependencies are added/removed
-   - Error messages explain why operations failed (if applicable)
-
-4. **Automatically update task files**:
-   - Regenerates task files to reflect dependency changes
-   - Ensures tasks and their files stay synchronized

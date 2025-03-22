@@ -319,6 +319,12 @@ npm run dev -- add-dependency --id=<id> --depends-on=<id>
 
 # Remove a dependency from a task
 npm run dev -- remove-dependency --id=<id> --depends-on=<id>
+
+# Validate dependencies without fixing them
+npm run dev -- validate-dependencies
+
+# Find and fix invalid dependencies automatically
+npm run dev -- fix-dependencies
 ```
 
 ## Task Structure

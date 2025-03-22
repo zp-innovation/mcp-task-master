@@ -18,6 +18,7 @@ alwaysApply: true
   - Mark completed tasks with `node scripts/dev.js set-status --id=<id> --status=done`
   - Update dependent tasks when implementation differs from original plan
   - Generate task files with `node scripts/dev.js generate` after updating tasks.json
+  - Maintain valid dependency structure with `node scripts/dev.js fix-dependencies` when needed
   - Respect dependency chains and task priorities when selecting work
   - Report progress regularly using the list command
 
@@ -219,3 +220,26 @@ alwaysApply: true
     - `--depends-on=<id>`: ID of task to remove as a dependency (required)
   - Example: `node scripts/dev.js remove-dependency --id=22 --depends-on=21`
   - Notes: Checks if dependency actually exists; updates task files automatically
+
+- **Command Reference: validate-dependencies**
+  - Syntax: `node scripts/dev.js validate-dependencies [options]`
+  - Description: Checks for and identifies invalid dependencies in tasks.json and task files
+  - Parameters:
+    - `--file=<path>, -f`: Use alternative tasks.json file (default: 'tasks/tasks.json')
+  - Example: `node scripts/dev.js validate-dependencies`
+  - Notes: 
+    - Reports all non-existent dependencies and self-dependencies without modifying files
+    - Provides detailed statistics on task dependency state
+    - Use before fix-dependencies to audit your task structure
+
+- **Command Reference: fix-dependencies**
+  - Syntax: `node scripts/dev.js fix-dependencies [options]`
+  - Description: Finds and fixes all invalid dependencies in tasks.json and task files
+  - Parameters:
+    - `--file=<path>, -f`: Use alternative tasks.json file (default: 'tasks/tasks.json')
+  - Example: `node scripts/dev.js fix-dependencies`
+  - Notes: 
+    - Removes references to non-existent tasks and subtasks
+    - Eliminates self-dependencies (tasks depending on themselves)
+    - Regenerates task files with corrected dependencies
+    - Provides detailed report of all fixes made
