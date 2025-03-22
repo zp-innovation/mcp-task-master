@@ -44,15 +44,20 @@ The script can be configured through environment variables in a `.env` file at t
    - Tasks can have `subtasks` for more detailed implementation steps.
    - Dependencies are displayed with status indicators (✅ for completed, ⏱️ for pending) to easily track progress.
 
-2. **Script Commands**  
-   You can run the script via:
+2. **CLI Commands**  
+   You can run the commands via:
 
    ```bash
+   # If installed globally
+   task-master [command] [options]
+   
+   # If using locally within the project
    node scripts/dev.js [command] [options]
    ```
 
    Available commands:
 
+   - `init`: Initialize a new project
    - `parse-prd`: Generate tasks from a PRD document
    - `list`: Display all tasks with their status
    - `update`: Update tasks based on new information
@@ -62,8 +67,15 @@ The script can be configured through environment variables in a `.env` file at t
    - `clear-subtasks`: Remove subtasks from specified tasks
    - `next`: Determine the next task to work on based on dependencies
    - `show`: Display detailed information about a specific task
+   - `analyze-complexity`: Analyze task complexity and generate recommendations
+   - `complexity-report`: Display the complexity analysis in a readable format
+   - `add-dependency`: Add a dependency between tasks
+   - `remove-dependency`: Remove a dependency from a task
+   - `validate-dependencies`: Check for invalid dependencies
+   - `fix-dependencies`: Fix invalid dependencies automatically
+   - `add-task`: Add a new task using AI
 
-   Run `node scripts/dev.js` without arguments to see detailed usage information.
+   Run `task-master --help` or `node scripts/dev.js --help` to see detailed usage information.
 
 ## Listing Tasks
 
@@ -71,16 +83,16 @@ The `list` command allows you to view all tasks and their status:
 
 ```bash
 # List all tasks
-node scripts/dev.js list
+task-master list
 
 # List tasks with a specific status
-node scripts/dev.js list --status=pending
+task-master list --status=pending
 
 # List tasks and include their subtasks
-node scripts/dev.js list --with-subtasks
+task-master list --with-subtasks
 
 # List tasks with a specific status and include their subtasks
-node scripts/dev.js list --status=pending --with-subtasks
+task-master list --status=pending --with-subtasks
 ```
 
 ## Updating Tasks
@@ -89,13 +101,13 @@ The `update` command allows you to update tasks based on new information or impl
 
 ```bash
 # Update tasks starting from ID 4 with a new prompt
-node scripts/dev.js update --from=4 --prompt="Refactor tasks from ID 4 onward to use Express instead of Fastify"
+task-master update --from=4 --prompt="Refactor tasks from ID 4 onward to use Express instead of Fastify"
 
 # Update all tasks (default from=1)
-node scripts/dev.js update --prompt="Add authentication to all relevant tasks"
+task-master update --prompt="Add authentication to all relevant tasks"
 
 # Specify a different tasks file
-node scripts/dev.js update --file=custom-tasks.json --from=5 --prompt="Change database from MongoDB to PostgreSQL"
+task-master update --file=custom-tasks.json --from=5 --prompt="Change database from MongoDB to PostgreSQL"
 ```
 
 Notes:
@@ -109,16 +121,16 @@ The `set-status` command allows you to change a task's status:
 
 ```bash
 # Mark a task as done
-node scripts/dev.js set-status --id=3 --status=done
+task-master set-status --id=3 --status=done
 
 # Mark a task as pending
-node scripts/dev.js set-status --id=4 --status=pending
+task-master set-status --id=4 --status=pending
 
 # Mark a specific subtask as done
-node scripts/dev.js set-status --id=3.1 --status=done
+task-master set-status --id=3.1 --status=done
 
 # Mark multiple tasks at once
-node scripts/dev.js set-status --id=1,2,3 --status=done
+task-master set-status --id=1,2,3 --status=done
 ```
 
 Notes:
@@ -134,25 +146,25 @@ The `expand` command allows you to break down tasks into subtasks for more detai
 
 ```bash
 # Expand a specific task with 3 subtasks (default)
-node scripts/dev.js expand --id=3
+task-master expand --id=3
 
 # Expand a specific task with 5 subtasks
-node scripts/dev.js expand --id=3 --num=5
+task-master expand --id=3 --num=5
 
 # Expand a task with additional context
-node scripts/dev.js expand --id=3 --prompt="Focus on security aspects"
+task-master expand --id=3 --prompt="Focus on security aspects"
 
 # Expand all pending tasks that don't have subtasks
-node scripts/dev.js expand --all
+task-master expand --all
 
 # Force regeneration of subtasks for all pending tasks
-node scripts/dev.js expand --all --force
+task-master expand --all --force
 
 # Use Perplexity AI for research-backed subtask generation
-node scripts/dev.js expand --id=3 --research
+task-master expand --id=3 --research
 
 # Use Perplexity AI for research-backed generation on all pending tasks
-node scripts/dev.js expand --all --research
+task-master expand --all --research
 ```
 
 ## Clearing Subtasks
@@ -161,13 +173,13 @@ The `clear-subtasks` command allows you to remove subtasks from specified tasks:
 
 ```bash
 # Clear subtasks from a specific task
-node scripts/dev.js clear-subtasks --id=3
+task-master clear-subtasks --id=3
 
 # Clear subtasks from multiple tasks
-node scripts/dev.js clear-subtasks --id=1,2,3
+task-master clear-subtasks --id=1,2,3
 
 # Clear subtasks from all tasks
-node scripts/dev.js clear-subtasks --all
+task-master clear-subtasks --all
 ```
 
 Notes:
@@ -207,10 +219,10 @@ The `add-dependency` and `remove-dependency` commands allow you to manage task d
 
 ```bash
 # Add a dependency to a task
-node scripts/dev.js add-dependency --id=<id> --depends-on=<id>
+task-master add-dependency --id=<id> --depends-on=<id>
 
 # Remove a dependency from a task
-node scripts/dev.js remove-dependency --id=<id> --depends-on=<id>
+task-master remove-dependency --id=<id> --depends-on=<id>
 ```
 
 These commands:
@@ -244,10 +256,10 @@ The `validate-dependencies` command allows you to check for invalid dependencies
 
 ```bash
 # Check for invalid dependencies in tasks.json
-node scripts/dev.js validate-dependencies
+task-master validate-dependencies
 
 # Specify a different tasks file
-node scripts/dev.js validate-dependencies --file=custom-tasks.json
+task-master validate-dependencies --file=custom-tasks.json
 ```
 
 This command:
@@ -265,10 +277,10 @@ The `fix-dependencies` command proactively finds and fixes all invalid dependenc
 
 ```bash
 # Find and fix all invalid dependencies
-node scripts/dev.js fix-dependencies
+task-master fix-dependencies
 
 # Specify a different tasks file
-node scripts/dev.js fix-dependencies --file=custom-tasks.json
+task-master fix-dependencies --file=custom-tasks.json
 ```
 
 This command:
@@ -293,19 +305,19 @@ The `analyze-complexity` command allows you to automatically assess task complex
 
 ```bash
 # Analyze all tasks and generate expansion recommendations
-node scripts/dev.js analyze-complexity
+task-master analyze-complexity
 
 # Specify a custom output file
-node scripts/dev.js analyze-complexity --output=custom-report.json
+task-master analyze-complexity --output=custom-report.json
 
 # Override the model used for analysis
-node scripts/dev.js analyze-complexity --model=claude-3-opus-20240229
+task-master analyze-complexity --model=claude-3-opus-20240229
 
 # Set a custom complexity threshold (1-10)
-node scripts/dev.js analyze-complexity --threshold=6
+task-master analyze-complexity --threshold=6
 
 # Use Perplexity AI for research-backed complexity analysis
-node scripts/dev.js analyze-complexity --research
+task-master analyze-complexity --research
 ```
 
 Notes:
@@ -323,13 +335,13 @@ The `expand` command automatically checks for and uses complexity analysis if av
 
 ```bash
 # Expand a task, using complexity report recommendations if available
-node scripts/dev.js expand --id=8
+task-master expand --id=8
 
 # Expand all tasks, prioritizing by complexity score if a report exists
-node scripts/dev.js expand --all
+task-master expand --all
 
 # Override recommendations with explicit values
-node scripts/dev.js expand --id=8 --num=5 --prompt="Custom prompt"
+task-master expand --id=8 --num=5 --prompt="Custom prompt"
 ```
 
 When a complexity report exists:
@@ -356,7 +368,7 @@ The output report structure is:
       "recommendedSubtasks": 6,
       "expansionPrompt": "Create subtasks that handle detecting...",
       "reasoning": "This task requires sophisticated logic...",
-      "expansionCommand": "node scripts/dev.js expand --id=8 --num=6 --prompt=\"Create subtasks...\" --research"
+      "expansionCommand": "task-master expand --id=8 --num=6 --prompt=\"Create subtasks...\" --research"
     },
     // More tasks sorted by complexity score (highest first)
   ]
@@ -369,10 +381,10 @@ The `next` command helps you determine which task to work on next based on depen
 
 ```bash
 # Show the next task to work on
-node scripts/dev.js next
+task-master next
 
 # Specify a different tasks file
-node scripts/dev.js next --file=custom-tasks.json
+task-master next --file=custom-tasks.json
 ```
 
 This command:
@@ -399,16 +411,16 @@ The `show` command allows you to view detailed information about a specific task
 
 ```bash
 # Show details for a specific task
-node scripts/dev.js show 1
+task-master show 1
 
 # Alternative syntax with --id option
-node scripts/dev.js show --id=1
+task-master show --id=1
 
 # Show details for a subtask
-node scripts/dev.js show --id=1.2
+task-master show --id=1.2
 
 # Specify a different tasks file
-node scripts/dev.js show 3 --file=custom-tasks.json
+task-master show 3 --file=custom-tasks.json
 ```
 
 This command:

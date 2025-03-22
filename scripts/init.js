@@ -12,6 +12,7 @@ import chalk from 'chalk';
 import figlet from 'figlet';
 import boxen from 'boxen';
 import gradient from 'gradient-string';
+import { Command } from 'commander';
 
 // Debug information
 console.log('Node version:', process.version);
@@ -20,6 +21,23 @@ console.log('Script path:', import.meta.url);
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
+
+// Configure the CLI program
+const program = new Command();
+program
+  .name('task-master-init')
+  .description('Initialize a new Claude Task Master project')
+  .version('1.0.0')  // Will be replaced by prepare-package script
+  .option('-y, --yes', 'Skip prompts and use default values')
+  .option('-n, --name <name>', 'Project name')
+  .option('-d, --description <description>', 'Project description')
+  .option('-v, --version <version>', 'Project version')
+  .option('-a, --author <author>', 'Author name')
+  .option('--skip-install', 'Skip installing dependencies')
+  .option('--dry-run', 'Show what would be done without making changes')
+  .parse(process.argv);
+
+const options = program.opts();
 
 // Define log levels
 const LOG_LEVELS = {
@@ -148,7 +166,90 @@ function copyTemplateFile(templateName, targetPath, replacements = {}) {
     content = content.replace(regex, value);
   });
   
-  // Write the content to the target path
+  // Handle special files that should be merged instead of overwritten
+  if (fs.existsSync(targetPath)) {
+    const filename = path.basename(targetPath);
+    
+    // Handle .gitignore - append lines that don't exist
+    if (filename === '.gitignore') {
+      log('info', `${targetPath} already exists, merging content...`);
+      const existingContent = fs.readFileSync(targetPath, 'utf8');
+      const existingLines = new Set(existingContent.split('\n').map(line => line.trim()));
+      const newLines = content.split('\n').filter(line => !existingLines.has(line.trim()));
+      
+      if (newLines.length > 0) {
+        // Add a comment to separate the original content from our additions
+        const updatedContent = existingContent.trim() + 
+          '\n\n# Added by Claude Task Master\n' + 
+          newLines.join('\n');
+        fs.writeFileSync(targetPath, updatedContent);
+        log('success', `Updated ${targetPath} with additional entries`);
+      } else {
+        log('info', `No new content to add to ${targetPath}`);
+      }
+      return;
+    }
+    
+    // Handle package.json - merge dependencies
+    if (filename === 'package.json') {
+      log('info', `${targetPath} already exists, merging dependencies...`);
+      try {
+        const existingPackageJson = JSON.parse(fs.readFileSync(targetPath, 'utf8'));
+        const newPackageJson = JSON.parse(content);
+        
+        // Merge dependencies, preferring existing versions in case of conflicts
+        existingPackageJson.dependencies = {
+          ...newPackageJson.dependencies,
+          ...existingPackageJson.dependencies
+        };
+        
+        // Add our scripts if they don't already exist
+        existingPackageJson.scripts = {
+          ...existingPackageJson.scripts,
+          ...Object.fromEntries(
+            Object.entries(newPackageJson.scripts)
+              .filter(([key]) => !existingPackageJson.scripts[key])
+          )
+        };
+        
+        // Preserve existing type if present
+        if (!existingPackageJson.type && newPackageJson.type) {
+          existingPackageJson.type = newPackageJson.type;
+        }
+        
+        fs.writeFileSync(
+          targetPath,
+          JSON.stringify(existingPackageJson, null, 2)
+        );
+        log('success', `Updated ${targetPath} with required dependencies and scripts`);
+      } catch (error) {
+        log('error', `Failed to merge package.json: ${error.message}`);
+        // Fallback to writing a backup of the existing file and creating a new one
+        const backupPath = `${targetPath}.backup-${Date.now()}`;
+        fs.copyFileSync(targetPath, backupPath);
+        log('info', `Created backup of existing package.json at ${backupPath}`);
+        fs.writeFileSync(targetPath, content);
+        log('warn', `Replaced ${targetPath} with new content (due to JSON parsing error)`);
+      }
+      return;
+    }
+    
+    // Handle README.md - offer to preserve or create a different file
+    if (filename === 'README.md') {
+      log('info', `${targetPath} already exists`);
+      // Create a separate README file specifically for this project
+      const taskMasterReadmePath = path.join(path.dirname(targetPath), 'README-task-master.md');
+      fs.writeFileSync(taskMasterReadmePath, content);
+      log('success', `Created ${taskMasterReadmePath} (preserved original README.md)`);
+      return;
+    }
+    
+    // For other files, warn and prompt before overwriting
+    log('warn', `${targetPath} already exists. Skipping file creation to avoid overwriting existing content.`);
+    return;
+  }
+  
+  // If the file doesn't exist, create it normally
   fs.writeFileSync(targetPath, content);
   log('info', `Created file: ${targetPath}`);
 }
@@ -164,8 +265,28 @@ async function initializeProject(options = {}) {
     const projectDescription = options.projectDescription;
     const projectVersion = options.projectVersion || '1.0.0';
     const authorName = options.authorName || '';
+    const dryRun = options.dryRun || false;
+    const skipInstall = options.skipInstall || false;
     
-    createProjectStructure(projectName, projectDescription, projectVersion, authorName);
+    if (dryRun) {
+      log('info', 'DRY RUN MODE: No files will be modified');
+      log('info', `Would initialize project: ${projectName} (${projectVersion})`);
+      log('info', `Description: ${projectDescription}`);
+      log('info', `Author: ${authorName || 'Not specified'}`);
+      log('info', 'Would create/update necessary project files');
+      if (!skipInstall) {
+        log('info', 'Would install dependencies');
+      }
+      return {
+        projectName,
+        projectDescription,
+        projectVersion,
+        authorName,
+        dryRun: true
+      };
+    }
+    
+    createProjectStructure(projectName, projectDescription, projectVersion, authorName, skipInstall);
     return {
       projectName,
       projectDescription,
@@ -190,11 +311,44 @@ async function initializeProject(options = {}) {
     // Set default version if not provided
     const projectVersion = projectVersionInput.trim() ? projectVersionInput : '1.0.0';
     
+    // Confirm settings
+    console.log('\nProject settings:');
+    console.log(chalk.blue('Name:'), chalk.white(projectName));
+    console.log(chalk.blue('Description:'), chalk.white(projectDescription));
+    console.log(chalk.blue('Version:'), chalk.white(projectVersion));
+    console.log(chalk.blue('Author:'), chalk.white(authorName || 'Not specified'));
+    
+    const confirmInput = await promptQuestion(rl, chalk.yellow('\nDo you want to continue with these settings? (Y/n): '));
+    const shouldContinue = confirmInput.trim().toLowerCase() !== 'n';
+    
     // Close the readline interface
     rl.close();
     
+    if (!shouldContinue) {
+      log('info', 'Project initialization cancelled by user');
+      return null;
+    }
+    
+    const dryRun = options.dryRun || false;
+    const skipInstall = options.skipInstall || false;
+    
+    if (dryRun) {
+      log('info', 'DRY RUN MODE: No files will be modified');
+      log('info', 'Would create/update necessary project files');
+      if (!skipInstall) {
+        log('info', 'Would install dependencies');
+      }
+      return {
+        projectName,
+        projectDescription,
+        projectVersion,
+        authorName,
+        dryRun: true
+      };
+    }
+    
     // Create the project structure
-    createProjectStructure(projectName, projectDescription, projectVersion, authorName);
+    createProjectStructure(projectName, projectDescription, projectVersion, authorName, skipInstall);
     
     return {
       projectName,
@@ -219,7 +373,7 @@ function promptQuestion(rl, question) {
 }
 
 // Function to create the project structure
-function createProjectStructure(projectName, projectDescription, projectVersion, authorName) {
+function createProjectStructure(projectName, projectDescription, projectVersion, authorName, skipInstall) {
   const targetDir = process.cwd();
   log('info', `Initializing project in ${targetDir}`);
   
@@ -228,7 +382,7 @@ function createProjectStructure(projectName, projectDescription, projectVersion,
   ensureDirectoryExists(path.join(targetDir, 'scripts'));
   ensureDirectoryExists(path.join(targetDir, 'tasks'));
   
-  // Create package.json
+  // Define our package.json content
   const packageJson = {
     name: projectName.toLowerCase().replace(/\s+/g, '-'),
     version: projectVersion,
@@ -255,11 +409,53 @@ function createProjectStructure(projectName, projectDescription, projectVersion,
     }
   };
   
-  fs.writeFileSync(
-    path.join(targetDir, 'package.json'),
-    JSON.stringify(packageJson, null, 2)
-  );
-  log('success', 'Created package.json');
+  // Check if package.json exists and merge if it does
+  const packageJsonPath = path.join(targetDir, 'package.json');
+  if (fs.existsSync(packageJsonPath)) {
+    log('info', 'package.json already exists, merging content...');
+    try {
+      const existingPackageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
+      
+      // Preserve existing fields but add our required ones
+      const mergedPackageJson = {
+        ...existingPackageJson,
+        scripts: {
+          ...existingPackageJson.scripts,
+          ...Object.fromEntries(
+            Object.entries(packageJson.scripts)
+              .filter(([key]) => !existingPackageJson.scripts || !existingPackageJson.scripts[key])
+          )
+        },
+        dependencies: {
+          ...existingPackageJson.dependencies || {},
+          ...Object.fromEntries(
+            Object.entries(packageJson.dependencies)
+              .filter(([key]) => !existingPackageJson.dependencies || !existingPackageJson.dependencies[key])
+          )
+        }
+      };
+      
+      // Ensure type is set if not already present
+      if (!mergedPackageJson.type && packageJson.type) {
+        mergedPackageJson.type = packageJson.type;
+      }
+      
+      fs.writeFileSync(packageJsonPath, JSON.stringify(mergedPackageJson, null, 2));
+      log('success', 'Updated package.json with required fields');
+    } catch (error) {
+      log('error', `Failed to merge package.json: ${error.message}`);
+      // Create a backup before potentially modifying
+      const backupPath = `${packageJsonPath}.backup-${Date.now()}`;
+      fs.copyFileSync(packageJsonPath, backupPath);
+      log('info', `Created backup of existing package.json at ${backupPath}`);
+      fs.writeFileSync(packageJsonPath, JSON.stringify(packageJson, null, 2));
+      log('warn', 'Created new package.json (backup of original file was created)');
+    }
+  } else {
+    // If package.json doesn't exist, create it
+    fs.writeFileSync(packageJsonPath, JSON.stringify(packageJson, null, 2));
+    log('success', 'Created package.json');
+  }
   
   // Copy template files with replacements
   const replacements = {
@@ -317,8 +513,12 @@ function createProjectStructure(projectName, projectDescription, projectVersion,
   }));
   
   try {
-    execSync('npm install', { stdio: 'inherit', cwd: targetDir });
-    log('success', 'Dependencies installed successfully!');
+    if (!skipInstall) {
+      execSync('npm install', { stdio: 'inherit', cwd: targetDir });
+      log('success', 'Dependencies installed successfully!');
+    } else {
+      log('info', 'Dependencies installation skipped');
+    }
   } catch (error) {
     log('error', 'Failed to install dependencies:', error.message);
     log('error', 'Please run npm install manually');
@@ -374,7 +574,26 @@ console.log('process.argv:', process.argv);
 (async function main() {
   try {
     console.log('Starting initialization...');
-    await initializeProject();
+    
+    // Check if we should use the CLI options or prompt for input
+    if (options.yes || (options.name && options.description)) {
+      // When using --yes flag or providing name and description, use CLI options
+      await initializeProject({
+        projectName: options.name || 'task-master-project',
+        projectDescription: options.description || 'A task management system for AI-driven development',
+        projectVersion: options.version || '1.0.0',
+        authorName: options.author || '',
+        dryRun: options.dryRun || false,
+        skipInstall: options.skipInstall || false
+      });
+    } else {
+      // Otherwise, prompt for input normally
+      await initializeProject({
+        dryRun: options.dryRun || false,
+        skipInstall: options.skipInstall || false
+      });
+    }
+    
     // Process should exit naturally after completion
     console.log('Initialization completed, exiting...');
     process.exit(0);

@@ -1,16 +1,18 @@
 {
   "name": "task-master-ai",
-  "version": "0.9.14",
+  "version": "0.9.16",
   "description": "A task management system for ambitious AI-driven development that doesn't overwhelm and confuse Cursor.",
   "main": "index.js",
   "type": "module",
   "bin": {
-    "task-master-init": "scripts/init.js"
+    "task-master": "./bin/task-master.js",
+    "task-master-init": "./bin/task-master-init.js"
   },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "prepare-package": "node scripts/prepare-package.js",
-    "prepublishOnly": "npm run prepare-package"
+    "prepublishOnly": "npm run prepare-package",
+    "prepare": "chmod +x bin/task-master.js bin/task-master-init.js"
   },
   "keywords": [
     "claude",
@@ -53,7 +55,8 @@
     "assets/**",
     ".cursor/**",
     "README-task-master.md",
-    "index.js"
+    "index.js",
+    "bin/**"
   ],
   "overrides": {
     "node-fetch": "^3.3.2",

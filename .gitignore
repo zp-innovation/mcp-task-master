@@ -21,12 +21,6 @@ lerna-debug.log*
 coverage
 *.lcov
 
-# nyc test coverage
-.nyc_output
-
-# Compiled binary addons
-build/Release
-
 # Optional npm cache directory
 .npm
 
@@ -62,7 +56,3 @@ dist
 *.debug
 init-debug.log
 dev-debug.log
-
-# Project specific
-tasks.json
-tasks/

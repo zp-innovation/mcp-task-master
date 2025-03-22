@@ -33,13 +33,21 @@ The script can be configured through environment variables in a `.env` file at t
 ## Installation
 
 ```bash
+# Install globally
+npm install -g task-master-ai
+
+# OR install locally within your project
 npm install task-master-ai
 ```
 
 ### Initialize a new project
 
 ```bash
-npx task-master-ai
+# If installed globally
+task-master init
+
+# If installed locally
+npx task-master-init
 ```
 
 This will prompt you for project details and set up a new project with the necessary files and structure.
@@ -49,9 +57,30 @@ This will prompt you for project details and set up a new project with the neces
 1. This package uses ES modules. Your package.json should include `"type": "module"`.
 2. The Anthropic SDK version should be 0.39.0 or higher.
 
+## Quick Start with Global Commands
+
+After installing the package globally, you can use these CLI commands from any directory:
+
+```bash
+# Initialize a new project
+task-master init
+
+# Parse a PRD and generate tasks
+task-master parse-prd your-prd.txt
+
+# List all tasks
+task-master list
+
+# Show the next task to work on
+task-master next
+
+# Generate task files
+task-master generate
+```
+
 ## Troubleshooting
 
-### If `npx task-master-ai` doesn't respond:
+### If `task-master init` doesn't respond:
 
 Try running it with Node directly:
 
@@ -99,12 +128,12 @@ Claude Task Master is designed to work seamlessly with [Cursor AI](https://www.c
 In Cursor's AI chat, instruct the agent to generate tasks from your PRD:
 
 ```
-Please use the dev.js script to parse my PRD and generate tasks. The PRD is located at scripts/prd.txt.
+Please use the task-master parse-prd command to generate tasks from my PRD. The PRD is located at scripts/prd.txt.
 ```
 
 The agent will execute:
 ```bash
-node scripts/dev.js parse-prd --input=scripts/prd.txt
+task-master parse-prd scripts/prd.txt
 ```
 
 This will:
@@ -122,7 +151,7 @@ Please generate individual task files from tasks.json
 
 The agent will execute:
 ```bash
-node scripts/dev.js generate
+task-master generate
 ```
 
 This creates individual task files in the `tasks/` directory (e.g., `task_001.txt`, `task_002.txt`), making it easier to reference specific tasks.
@@ -140,8 +169,8 @@ What tasks are available to work on next?
 ```
 
 The agent will:
-- Run `node scripts/dev.js list` to see all tasks
-- Run `node scripts/dev.js next` to determine the next task to work on
+- Run `task-master list` to see all tasks
+- Run `task-master next` to determine the next task to work on
 - Analyze dependencies to determine which tasks are ready to be worked on
 - Prioritize tasks based on priority level and ID order
 - Suggest the next task(s) to implement
@@ -176,7 +205,7 @@ Task 3 is now complete. Please update its status.
 
 The agent will execute:
 ```bash
-node scripts/dev.js set-status --id=3 --status=done
+task-master set-status --id=3 --status=done
 ```
 
 ### 5. Handling Implementation Drift
@@ -193,7 +222,7 @@ We've changed our approach. We're now using Express instead of Fastify. Please u
 
 The agent will execute:
 ```bash
-node scripts/dev.js update --from=4 --prompt="Now we are using Express instead of Fastify."
+task-master update --from=4 --prompt="Now we are using Express instead of Fastify."
 ```
 
 This will rewrite or re-scope subsequent tasks in tasks.json while preserving completed work.
@@ -208,7 +237,7 @@ Task 5 seems complex. Can you break it down into subtasks?
 
 The agent will execute:
 ```bash
-node scripts/dev.js expand --id=5 --subtasks=3
+task-master expand --id=5 --num=3
 ```
 
 You can provide additional context:
@@ -218,7 +247,7 @@ Please break down task 5 with a focus on security considerations.
 
 The agent will execute:
 ```bash
-node scripts/dev.js expand --id=5 --prompt="Focus on security aspects"
+task-master expand --id=5 --prompt="Focus on security aspects"
 ```
 
 You can also expand all pending tasks:
@@ -228,7 +257,7 @@ Please break down all pending tasks into subtasks.
 
 The agent will execute:
 ```bash
-node scripts/dev.js expand --all
+task-master expand --all
 ```
 
 For research-backed subtask generation using Perplexity AI:
@@ -238,7 +267,7 @@ Please break down task 5 using research-backed generation.
 
 The agent will execute:
 ```bash
-node scripts/dev.js expand --id=5 --research
+task-master expand --id=5 --research
 ```
 
 ## Command Reference
@@ -248,66 +277,66 @@ Here's a comprehensive reference of all available commands:
 ### Parse PRD
 ```bash
 # Parse a PRD file and generate tasks
-npm run parse-prd -- --input=<prd-file.txt>
+task-master parse-prd <prd-file.txt>
 
 # Limit the number of tasks generated
-npm run dev -- parse-prd --input=<prd-file.txt> --tasks=10
+task-master parse-prd <prd-file.txt> --num-tasks=10
 ```
 
 ### List Tasks
 ```bash
 # List all tasks
-npm run list
+task-master list
 
 # List tasks with a specific status
-npm run dev -- list --status=<status>
+task-master list --status=<status>
 
 # List tasks with subtasks
-npm run dev -- list --with-subtasks
+task-master list --with-subtasks
 
 # List tasks with a specific status and include subtasks
-npm run dev -- list --status=<status> --with-subtasks
+task-master list --status=<status> --with-subtasks
 ```
 
 ### Show Next Task
 ```bash
 # Show the next task to work on based on dependencies and status
-npm run dev -- next
+task-master next
 ```
 
 ### Show Specific Task
 ```bash
 # Show details of a specific task
-npm run dev -- show <id>
+task-master show <id>
 # or
-npm run dev -- show --id=<id>
+task-master show --id=<id>
 
 # View a specific subtask (e.g., subtask 2 of task 1)
-npm run dev -- show 1.2
+task-master show 1.2
 ```
 
 ### Update Tasks
 ```bash
 # Update tasks from a specific ID and provide context
-npm run dev -- update --from=<id> --prompt="<prompt>"
+task-master update --from=<id> --prompt="<prompt>"
 ```
 
 ### Generate Task Files
 ```bash
 # Generate individual task files from tasks.json
-npm run generate
+task-master generate
 ```
 
 ### Set Task Status
 ```bash
 # Set status of a single task
-npm run dev -- set-status --id=<id> --status=<status>
+task-master set-status --id=<id> --status=<status>
 
 # Set status for multiple tasks
-npm run dev -- set-status --id=1,2,3 --status=<status>
+task-master set-status --id=1,2,3 --status=<status>
 
 # Set status for subtasks
-npm run dev -- set-status --id=1.1,1.2 --status=<status>
+task-master set-status --id=1.1,1.2 --status=<status>
 ```
 
 When marking a task as "done", all of its subtasks will automatically be marked as "done" as well.
@@ -315,79 +344,91 @@ When marking a task as "done", all of its subtasks will automatically be marked 
 ### Expand Tasks
 ```bash
 # Expand a specific task with subtasks
-npm run dev -- expand --id=<id> --subtasks=<number>
+task-master expand --id=<id> --num=<number>
 
 # Expand with additional context
-npm run dev -- expand --id=<id> --prompt="<context>"
+task-master expand --id=<id> --prompt="<context>"
 
 # Expand all pending tasks
-npm run dev -- expand --all
+task-master expand --all
 
 # Force regeneration of subtasks for tasks that already have them
-npm run dev -- expand --all --force
+task-master expand --all --force
 
 # Research-backed subtask generation for a specific task
-npm run dev -- expand --id=<id> --research
+task-master expand --id=<id> --research
 
 # Research-backed generation for all tasks
-npm run dev -- expand --all --research
+task-master expand --all --research
 ```
 
 ### Clear Subtasks
 ```bash
 # Clear subtasks from a specific task
-npm run dev -- clear-subtasks --id=<id>
+task-master clear-subtasks --id=<id>
 
 # Clear subtasks from multiple tasks
-npm run dev -- clear-subtasks --id=1,2,3
+task-master clear-subtasks --id=1,2,3
 
 # Clear subtasks from all tasks
-npm run dev -- clear-subtasks --all
+task-master clear-subtasks --all
 ```
 
 ### Analyze Task Complexity
 ```bash
 # Analyze complexity of all tasks
-npm run dev -- analyze-complexity
+task-master analyze-complexity
 
 # Save report to a custom location
-npm run dev -- analyze-complexity --output=my-report.json
+task-master analyze-complexity --output=my-report.json
 
 # Use a specific LLM model
-npm run dev -- analyze-complexity --model=claude-3-opus-20240229
+task-master analyze-complexity --model=claude-3-opus-20240229
 
 # Set a custom complexity threshold (1-10)
-npm run dev -- analyze-complexity --threshold=6
+task-master analyze-complexity --threshold=6
 
 # Use an alternative tasks file
-npm run dev -- analyze-complexity --file=custom-tasks.json
+task-master analyze-complexity --file=custom-tasks.json
 
 # Use Perplexity AI for research-backed complexity analysis
-npm run dev -- analyze-complexity --research
+task-master analyze-complexity --research
 ```
 
 ### View Complexity Report
 ```bash
 # Display the task complexity analysis report
-npm run dev -- complexity-report
+task-master complexity-report
 
 # View a report at a custom location
-npm run dev -- complexity-report --file=my-report.json
+task-master complexity-report --file=my-report.json
 ```
 
 ### Managing Task Dependencies
 ```bash
 # Add a dependency to a task
-npm run dev -- add-dependency --id=<id> --depends-on=<id>
+task-master add-dependency --id=<id> --depends-on=<id>
 
 # Remove a dependency from a task
-npm run dev -- remove-dependency --id=<id> --depends-on=<id>
+task-master remove-dependency --id=<id> --depends-on=<id>
 
 # Validate dependencies without fixing them
-npm run dev -- validate-dependencies
+task-master validate-dependencies
 
 # Find and fix invalid dependencies automatically
-npm run dev -- fix-dependencies
+task-master fix-dependencies
+```
+
+### Add a New Task
+```bash
+# Add a new task using AI
+task-master add-task --prompt="Description of the new task"
+
+# Add a task with dependencies
+task-master add-task --prompt="Description" --dependencies=1,2,3
+
+# Add a task with priority
+task-master add-task --prompt="Description" --priority=high
 ```
 
 ## Feature Details
@@ -430,15 +471,15 @@ When a complexity report exists:
 Example workflow:
 ```bash
 # Generate the complexity analysis report with research capabilities
-npm run dev -- analyze-complexity --research
+task-master analyze-complexity --research
 
 # Review the report in a readable format
-npm run dev -- complexity-report
+task-master complexity-report
 
 # Expand tasks using the optimized recommendations
-npm run dev -- expand --id=8
+task-master expand --id=8
 # or expand all tasks
-npm run dev -- expand --all
+task-master expand --all
 ```
 
 ### Finding the Next Task
