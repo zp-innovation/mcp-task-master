@@ -8,6 +8,10 @@ import { execSync } from 'child_process';
 import readline from 'readline';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
+import chalk from 'chalk';
+import figlet from 'figlet';
+import boxen from 'boxen';
+import gradient from 'gradient-string';
 
 // Debug information
 console.log('Node version:', process.version);
@@ -17,42 +21,65 @@ console.log('Script path:', import.meta.url);
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-// Define log levels and colors
+// Define log levels
 const LOG_LEVELS = {
   debug: 0,
   info: 1,
   warn: 2,
-  error: 3
-};
-
-const COLORS = {
-  reset: '\x1b[0m',
-  bright: '\x1b[1m',
-  dim: '\x1b[2m',
-  red: '\x1b[31m',
-  green: '\x1b[32m',
-  yellow: '\x1b[33m',
-  blue: '\x1b[34m',
-  magenta: '\x1b[35m',
-  cyan: '\x1b[36m'
+  error: 3,
+  success: 4
 };
 
 // Get log level from environment or default to info
 const LOG_LEVEL = process.env.LOG_LEVEL ? LOG_LEVELS[process.env.LOG_LEVEL.toLowerCase()] : LOG_LEVELS.info;
 
-// Logging function
-function log(level, ...args) {
-  const levelValue = LOG_LEVELS[level.toLowerCase()];
+// Create a color gradient for the banner
+const coolGradient = gradient(['#00b4d8', '#0077b6', '#03045e']);
+const warmGradient = gradient(['#fb8b24', '#e36414', '#9a031e']);
+
+// Display a fancy banner
+function displayBanner() {
+  console.clear();
+  const bannerText = figlet.textSync('Claude Task Master', {
+    font: 'Standard',
+    horizontalLayout: 'default',
+    verticalLayout: 'default'
+  });
   
-  if (levelValue >= LOG_LEVEL) {
-    const prefix = {
-      debug: `${COLORS.dim}[DEBUG]${COLORS.reset}`,
-      info: `${COLORS.blue}[INFO]${COLORS.reset}`,
-      warn: `${COLORS.yellow}[WARN]${COLORS.reset}`,
-      error: `${COLORS.red}[ERROR]${COLORS.reset}`
-    }[level.toLowerCase()];
+  console.log(coolGradient(bannerText));
+  
+  console.log(boxen(chalk.white(`${chalk.bold('Initializing')} your new project`), {
+    padding: 1,
+    margin: { top: 0, bottom: 1 },
+    borderStyle: 'round',
+    borderColor: 'cyan'
+  }));
+}
+
+// Logging function with icons and colors
+function log(level, ...args) {
+  const icons = {
+    debug: chalk.gray('🔍'),
+    info: chalk.blue('ℹ️'),
+    warn: chalk.yellow('⚠️'),
+    error: chalk.red('❌'),
+    success: chalk.green('✅')
+  };
+  
+  if (LOG_LEVELS[level] >= LOG_LEVEL) {
+    const icon = icons[level] || '';
     
-    console.log(prefix, ...args);
+    if (level === 'error') {
+      console.error(icon, chalk.red(...args));
+    } else if (level === 'warn') {
+      console.warn(icon, chalk.yellow(...args));
+    } else if (level === 'success') {
+      console.log(icon, chalk.green(...args));
+    } else if (level === 'info') {
+      console.log(icon, chalk.blue(...args));
+    } else {
+      console.log(icon, ...args);
+    }
   }
   
   // Write to debug log if DEBUG=true
@@ -125,6 +152,9 @@ function copyTemplateFile(templateName, targetPath, replacements = {}) {
 
 // Main function to initialize a new project
 async function initializeProject(options = {}) {
+  // Display the banner
+  displayBanner();
+  
   // If options are provided, use them directly without prompting
   if (options.projectName && options.projectDescription) {
     const projectName = options.projectName;
@@ -149,10 +179,10 @@ async function initializeProject(options = {}) {
   });
   
   try {
-    const projectName = await promptQuestion(rl, 'Enter project name: ');
-    const projectDescription = await promptQuestion(rl, 'Enter project description: ');
-    const projectVersionInput = await promptQuestion(rl, 'Enter project version (default: 1.0.0): ');
-    const authorName = await promptQuestion(rl, 'Enter your name: ');
+    const projectName = await promptQuestion(rl, chalk.cyan('Enter project name: '));
+    const projectDescription = await promptQuestion(rl, chalk.cyan('Enter project description: '));
+    const projectVersionInput = await promptQuestion(rl, chalk.cyan('Enter project version (default: 1.0.0): '));
+    const authorName = await promptQuestion(rl, chalk.cyan('Enter your name: '));
     
     // Set default version if not provided
     const projectVersion = projectVersionInput.trim() ? projectVersionInput : '1.0.0';
@@ -210,10 +240,15 @@ function createProjectStructure(projectName, projectDescription, projectVersion,
     },
     dependencies: {
       "@anthropic-ai/sdk": "^0.39.0",
-      "chalk": "^4.1.2",
+      "chalk": "^5.3.0",
       "commander": "^11.1.0",
       "dotenv": "^16.3.1",
-      "openai": "^4.86.1"
+      "openai": "^4.86.1",
+      "figlet": "^1.7.0",
+      "boxen": "^7.1.1",
+      "gradient-string": "^2.0.2",
+      "cli-table3": "^0.6.3",
+      "ora": "^7.0.1"
     }
   };
   
@@ -221,7 +256,7 @@ function createProjectStructure(projectName, projectDescription, projectVersion,
     path.join(targetDir, 'package.json'),
     JSON.stringify(packageJson, null, 2)
   );
-  log('info', 'Created package.json');
+  log('success', 'Created package.json');
   
   // Copy template files with replacements
   const replacements = {
@@ -262,35 +297,65 @@ function createProjectStructure(projectName, projectDescription, projectVersion,
   // Initialize git repository if git is available
   try {
     if (!fs.existsSync(path.join(targetDir, '.git'))) {
+      log('info', 'Initializing git repository...');
       execSync('git init', { stdio: 'ignore' });
-      log('info', 'Initialized git repository');
+      log('success', 'Git repository initialized');
     }
   } catch (error) {
     log('warn', 'Git not available, skipping repository initialization');
   }
   
   // Run npm install automatically
-  log('info', 'Installing dependencies...');
+  console.log(boxen(chalk.cyan('Installing dependencies...'), {
+    padding: 0.5,
+    margin: 0.5,
+    borderStyle: 'round',
+    borderColor: 'blue'
+  }));
+  
   try {
     execSync('npm install', { stdio: 'inherit', cwd: targetDir });
-    log('info', `${COLORS.green}Dependencies installed successfully!${COLORS.reset}`);
+    log('success', 'Dependencies installed successfully!');
   } catch (error) {
     log('error', 'Failed to install dependencies:', error.message);
     log('error', 'Please run npm install manually');
   }
   
-  log('info', `${COLORS.green}${COLORS.bright}Project initialized successfully!${COLORS.reset}`);
-  log('info', '');
-  log('info', 'Next steps:');
-  log('info', '1. Rename .env.example to .env and add your ANTHROPIC_API_KEY and PERPLEXITY_API_KEY');
-  log('info', '2. Discuss your idea with AI, and once ready ask for a PRD, and save it as PRD.txt in the /scripts directory');
-  log('info', '3. Ask Cursor Agent to parse your PRD.txt and generate tasks');
-  log('info', '└── You can also manually run `npm run parse-prd -- --input=<your-prd-file.txt>` to generate tasks');
-  log('info', '4. Ask Cursor to analyze the complexity of your tasks, which will generate a task-complexity-report.json file in /scripts for your review.');
-  log('info', '5. Ask Cursor which task is next and it will determine what to start with based on task statuses and dependencies.');
-  log('info', '6. Ask Cursor to expand any tasks that are too large in scope or complexity. The complexity report will be used to generate subtasks if it exists.');
-  log('info', '7. Ship it!');
-  log('info', '* Review the README.md file to learn how to use other commands via Cursor Agent.');
+  // Display success message
+  console.log(boxen(
+    warmGradient.multiline(figlet.textSync('Success!', { font: 'Standard' })) + 
+    '\n' + chalk.green('Project initialized successfully!'),
+    {
+      padding: 1,
+      margin: 1,
+      borderStyle: 'double',
+      borderColor: 'green'
+    }
+  ));
+  
+  // Display next steps in a nice box
+  console.log(boxen(
+    chalk.cyan.bold('Things you can now do:') + '\n\n' +
+    chalk.white('1. ') + chalk.yellow('Rename .env.example to .env and add your ANTHROPIC_API_KEY and PERPLEXITY_API_KEY') + '\n' +
+    chalk.white('2. ') + chalk.yellow('Discuss your idea with AI, and once ready ask for a PRD, and save it as PRD.txt') + '\n' +
+    chalk.white('3. ') + chalk.yellow('Ask Cursor Agent to parse your PRD.txt and generate tasks') + '\n' +
+    chalk.white('   └─ ') + chalk.dim('You can also run ') + chalk.cyan('npm run parse-prd -- --input=<your-prd-file.txt>') + '\n' +
+    chalk.white('4. ') + chalk.yellow('Ask Cursor to analyze the complexity of your tasks') + '\n' +
+    chalk.white('5. ') + chalk.yellow('Ask Cursor which task is next to determine where to start') + '\n' +
+    chalk.white('6. ') + chalk.yellow('Ask Cursor to expand any complex tasks that are too large or complex.') + '\n' +
+    chalk.white('7. ') + chalk.yellow('Ask Cursor to set the status of a task, or multiple tasks. Use the task id from the task lists.') + '\n' +
+    chalk.white('8. ') + chalk.yellow('Ask Cursor to update all tasks from a specific task id based on new learnings or pivots in your project.') + '\n' +
+    chalk.white('9. ') + chalk.green.bold('Ship it!') + '\n\n' +
+    chalk.dim('* Review the README.md file to learn how to use other commands via Cursor Agent.'),
+    {
+      padding: 1,
+      margin: 1,
+      borderStyle: 'round',
+      borderColor: 'yellow',
+      title: 'Getting Started',
+      titleAlignment: 'center'
+    }
+  ));
 }
 
 // Run the initialization if this script is executed directly
