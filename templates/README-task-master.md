@@ -1,4 +1,5 @@
-# Claude Task Master
+# Task Master
+### by [@eyaltoledano](https://x.com/eyaltoledano)
 
 A task management system for AI-driven development with Claude, designed to work seamlessly with Cursor AI.
 
