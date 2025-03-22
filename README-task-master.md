@@ -33,7 +33,7 @@ The script can be configured through environment variables in a `.env` file at t
 ## Installation
 
 ```bash
-npm install claude-task-master
+npm install task-master-ai
 ```
 
 ## Usage

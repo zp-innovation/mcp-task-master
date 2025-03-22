@@ -6,7 +6,7 @@ A task management system for AI-driven development with Claude.
 ## Installation
 
 ```bash
-npm install -g claude-task-master
+npm install -g task-master-ai
 ```
 
 ## Usage
@@ -19,7 +19,7 @@ mkdir my-new-project
 cd my-new-project
 
 # Initialize the project
-claude-task-init
+task-master-init
 ```
 
 This will create the necessary file structure for your project, including:
