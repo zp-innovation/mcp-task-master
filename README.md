@@ -399,6 +399,15 @@ npm run dev -- analyze-complexity --file=custom-tasks.json
 npm run dev -- analyze-complexity --research
 ```
 
+### View Complexity Report
+```bash
+# Display the task complexity analysis report
+npm run dev -- complexity-report
+
+# View a report at a custom location
+npm run dev -- complexity-report --file=my-report.json
+```
+
 ### Managing Task Dependencies
 ```bash
 # Add a dependency to a task
@@ -431,6 +440,16 @@ The generated report contains:
 - AI-generated expansion prompts customized for each task
 - Ready-to-run expansion commands directly within each task analysis
 
+### Viewing Complexity Report
+
+The `complexity-report` command:
+- Displays a formatted, easy-to-read version of the complexity analysis report
+- Shows tasks organized by complexity score (highest to lowest)
+- Provides complexity distribution statistics (low, medium, high)
+- Highlights tasks recommended for expansion based on threshold score
+- Includes ready-to-use expansion commands for each complex task
+- If no report exists, offers to generate one on the spot
+
 ### Smart Task Expansion
 
 The `expand` command automatically checks for and uses the complexity report:
@@ -446,7 +465,8 @@ Example workflow:
 # Generate the complexity analysis report with research capabilities
 npm run dev -- analyze-complexity --research
 
-# Review the report in scripts/task-complexity-report.json
+# Review the report in a readable format
+npm run dev -- complexity-report
 
 # Expand tasks using the optimized recommendations
 npm run dev -- expand --id=8
@@ -537,6 +557,11 @@ Please mark it as complete and tell me what I should work on next.
 Can you analyze the complexity of our tasks to help me understand which ones need to be broken down further?
 ```
 
+### Viewing complexity report
+```
+Can you show me the complexity report in a more readable format?
+```
+
 ## License
 
-MIT 
+MIT

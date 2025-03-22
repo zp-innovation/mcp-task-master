@@ -95,6 +95,15 @@
  *      -> Regenerates task files with corrected dependencies
  *      -> Provides detailed report of all fixes made
  *
+ *   15) complexity-report [--file=path]
+ *      -> Displays the task complexity analysis report in a readable format
+ *      -> Shows tasks organized by complexity score with recommended actions
+ *      -> Includes complexity distribution statistics
+ *      -> Provides ready-to-use expansion commands
+ *      -> If no report exists, offers to generate one
+ *      -> Options:
+ *         --file, -f <path>: Specify report file path (default: 'scripts/task-complexity-report.json')
+ *
  * Usage examples:
  *   node dev.js parse-prd --input=sample-prd.txt
  *   node dev.js parse-prd --input=sample-prd.txt --tasks=10
@@ -118,6 +127,8 @@
  *   node dev.js remove-dependency --id=22 --depends-on=21
  *   node dev.js validate-dependencies
  *   node dev.js fix-dependencies
+ *   node dev.js complexity-report
+ *   node dev.js complexity-report --file=custom-report.json
  */
 
 import fs from 'fs';
@@ -196,13 +207,16 @@ const warmGradient = gradient(['#fb8b24', '#e36414', '#9a031e']);
 // Display a fancy banner
 function displayBanner() {
   console.clear();
-  const bannerText = figlet.textSync('Claude Task Master', {
+  const bannerText = figlet.textSync('Task Master AI', {
     font: 'Standard',
     horizontalLayout: 'default',
     verticalLayout: 'default'
   });
   
   console.log(coolGradient(bannerText));
+  
+  // Add creator credit line below the banner
+  console.log(chalk.dim('by ') + chalk.cyan.underline('https://x.com/eyaltoledano'));
   
   // Read version directly from package.json
   let version = "1.5.0"; // Default fallback
@@ -1215,6 +1229,66 @@ function listTasks(tasksPath, statusFilter, withSubtasks = false) {
     ? data.tasks.filter(t => t.status === statusFilter)
     : data.tasks;
   
+  // Count statistics for metrics
+  const doneCount = data.tasks.filter(t => t.status === 'done' || t.status === 'completed').length;
+  const pendingCount = data.tasks.filter(t => t.status === 'pending').length;
+  const inProgressCount = data.tasks.filter(t => t.status === 'in-progress').length;
+  const deferredCount = data.tasks.filter(t => t.status === 'deferred').length;
+  const otherCount = data.tasks.length - doneCount - pendingCount - inProgressCount - deferredCount;
+  
+  // Count tasks by priority
+  const highPriorityCount = data.tasks.filter(t => t.priority === 'high').length;
+  const mediumPriorityCount = data.tasks.filter(t => t.priority === 'medium').length;
+  const lowPriorityCount = data.tasks.filter(t => t.priority === 'low').length;
+  
+  // Calculate progress percentage
+  const progressPercent = Math.round((doneCount / data.tasks.length) * 100);
+  const progressBar = createProgressBar(progressPercent, 30);
+  
+  // Count blocked tasks (pending with dependencies that aren't done)
+  let blockedCount = 0;
+  data.tasks.filter(t => t.status === 'pending').forEach(task => {
+    if (task.dependencies && task.dependencies.length > 0) {
+      const hasPendingDeps = task.dependencies.some(depId => {
+        const depTask = data.tasks.find(t => t.id === depId);
+        return depTask && depTask.status !== 'done' && depTask.status !== 'completed';
+      });
+      if (hasPendingDeps) blockedCount++;
+    }
+  });
+  
+  // Count subtasks
+  let totalSubtasks = 0;
+  let completedSubtasks = 0;
+  data.tasks.forEach(task => {
+    if (task.subtasks && Array.isArray(task.subtasks)) {
+      totalSubtasks += task.subtasks.length;
+      completedSubtasks += task.subtasks.filter(st => 
+        st.status === 'done' || st.status === 'completed'
+      ).length;
+    }
+  });
+  
+  // Calculate subtask progress
+  const subtaskProgressPercent = totalSubtasks > 0 
+    ? Math.round((completedSubtasks / totalSubtasks) * 100) 
+    : 0;
+  const subtaskProgressBar = createProgressBar(subtaskProgressPercent, 30);
+  
+  // Display the dashboard first
+  console.log(boxen(
+    chalk.white.bold('Project Dashboard\n') +
+    `${chalk.bold('Tasks Progress:')} ${progressBar} ${progressPercent}%\n` +
+    `${chalk.green.bold('Done:')} ${doneCount}  ${chalk.blue.bold('In Progress:')} ${inProgressCount}  ${chalk.yellow.bold('Pending:')} ${pendingCount}  ${chalk.red.bold('Blocked:')} ${blockedCount}  ${chalk.gray.bold('Deferred:')} ${deferredCount}\n` +
+    '\n' +
+    `${chalk.bold('Subtasks Progress:')} ${subtaskProgressBar} ${subtaskProgressPercent}%\n` +
+    `${chalk.green.bold('Completed:')} ${completedSubtasks}/${totalSubtasks}  ${chalk.yellow.bold('Remaining:')} ${totalSubtasks - completedSubtasks}\n` +
+    '\n' +
+    `${chalk.bold('Priority Breakdown:')}\n` +
+    `${chalk.red.bold('High:')} ${highPriorityCount}  ${chalk.yellow.bold('Medium:')} ${mediumPriorityCount}  ${chalk.gray.bold('Low:')} ${lowPriorityCount}`,
+    { padding: 1, borderColor: 'cyan', borderStyle: 'round', margin: { top: 0, bottom: 0 } }
+  ));
+  
   // Get terminal width for dynamic sizing
   const terminalWidth = process.stdout.columns || 100;
   
@@ -1353,20 +1427,6 @@ function listTasks(tasksPath, statusFilter, withSubtasks = false) {
     }));
     
     console.log(table.toString());
-    
-    // Summary box
-    const doneCount = data.tasks.filter(t => t.status === 'done' || t.status === 'completed').length;
-    const pendingCount = data.tasks.filter(t => t.status === 'pending').length;
-    const otherCount = data.tasks.length - doneCount - pendingCount;
-    
-    const progressPercent = Math.round((doneCount / data.tasks.length) * 100);
-    const progressBar = createProgressBar(progressPercent, 30);
-    
-    console.log(boxen(
-      `${chalk.bold('Project Progress:')} ${progressBar} ${progressPercent}%\n` +
-      `${chalk.green.bold('Done:')} ${doneCount}  ${chalk.yellow.bold('Pending:')} ${pendingCount}  ${chalk.gray.bold('Other:')} ${otherCount}`,
-      { padding: 1, borderColor: 'cyan', borderStyle: 'round', margin: { top: 1 } }
-    ));
   }
 }
 
@@ -2598,6 +2658,15 @@ async function main() {
     });
 
   program
+    .command('complexity-report')
+    .description('Display the complexity analysis report')
+    .option('-f, --file <path>', 'Path to the complexity report file', 'scripts/task-complexity-report.json')
+    .action(async (options) => {
+      const reportPath = options.file;
+      await displayComplexityReport(reportPath);
+    });
+
+  program
     .command('*')
     .description('Handle unknown commands')
     .action(async (command) => {
@@ -2806,7 +2875,7 @@ function displayHelp() {
   displayBanner();
   
   console.log(boxen(
-    chalk.white.bold('Claude Task Master CLI'),
+    chalk.white.bold('Task Master CLI'),
     { padding: 1, borderColor: 'blue', borderStyle: 'round', margin: { top: 1, bottom: 1 } }
   ));
   
@@ -2844,6 +2913,8 @@ function displayHelp() {
       commands: [
         { name: 'analyze-complexity', args: '[--research] [--threshold=5]', 
           desc: 'Analyze tasks and generate expansion recommendations' },
+        { name: 'complexity-report', args: '[--file=<path>]',
+          desc: 'Display the complexity analysis report' },
         { name: 'expand', args: '--id=<id> [--num=5] [--research] [--prompt="<context>"]', 
           desc: 'Break down tasks into detailed subtasks' },
         { name: 'expand --all', args: '[--force] [--research]', 
@@ -5198,4 +5269,202 @@ function ensureAtLeastOneIndependentSubtask(tasksData) {
   });
   
   return changesDetected;
+}
+
+// Add the function to display complexity report (around line ~4850, before the main function)
+/**
+ * Display the complexity analysis report in a nice format
+ * @param {string} reportPath - Path to the complexity report file
+ */
+async function displayComplexityReport(reportPath) {
+  displayBanner();
+  
+  // Check if the report exists
+  if (!fs.existsSync(reportPath)) {
+    console.log(boxen(
+      chalk.yellow(`No complexity report found at ${reportPath}\n\n`) +
+      'Would you like to generate one now?',
+      { padding: 1, borderColor: 'yellow', borderStyle: 'round', margin: { top: 1 } }
+    ));
+    
+    const readline = require('readline').createInterface({
+      input: process.stdin,
+      output: process.stdout
+    });
+    
+    const answer = await new Promise(resolve => {
+      readline.question(chalk.cyan('Generate complexity report? (y/n): '), resolve);
+    });
+    readline.close();
+    
+    if (answer.toLowerCase() === 'y' || answer.toLowerCase() === 'yes') {
+      // Call the analyze-complexity command
+      console.log(chalk.blue('Generating complexity report...'));
+      await analyzeTaskComplexity({ 
+        output: reportPath,
+        research: false, // Default to no research for speed
+        file: 'tasks/tasks.json'
+      });
+      // Read the newly generated report
+      return displayComplexityReport(reportPath);
+    } else {
+      console.log(chalk.yellow('Report generation cancelled.'));
+      return;
+    }
+  }
+  
+  // Read the report
+  let report;
+  try {
+    report = JSON.parse(fs.readFileSync(reportPath, 'utf8'));
+  } catch (error) {
+    log('error', `Error reading complexity report: ${error.message}`);
+    return;
+  }
+  
+  // Display report header
+  console.log(boxen(
+    chalk.white.bold('Task Complexity Analysis Report'),
+    { padding: 1, borderColor: 'blue', borderStyle: 'round', margin: { top: 1, bottom: 1 } }
+  ));
+  
+  // Display metadata
+  const metaTable = new Table({
+    style: {
+      head: [],
+      border: [],
+      'padding-top': 0,
+      'padding-bottom': 0,
+      compact: true
+    },
+    chars: {
+      'mid': '', 'left-mid': '', 'mid-mid': '', 'right-mid': ''
+    },
+    colWidths: [20, 50]
+  });
+  
+  metaTable.push(
+    [chalk.cyan.bold('Generated:'), new Date(report.meta.generatedAt).toLocaleString()],
+    [chalk.cyan.bold('Tasks Analyzed:'), report.meta.tasksAnalyzed],
+    [chalk.cyan.bold('Threshold Score:'), report.meta.thresholdScore],
+    [chalk.cyan.bold('Project:'), report.meta.projectName],
+    [chalk.cyan.bold('Research-backed:'), report.meta.usedResearch ? 'Yes' : 'No']
+  );
+  
+  console.log(metaTable.toString());
+  
+  // Sort tasks by complexity score (highest first)
+  const sortedTasks = [...report.complexityAnalysis].sort((a, b) => b.complexityScore - a.complexityScore);
+  
+  // Determine which tasks need expansion based on threshold
+  const tasksNeedingExpansion = sortedTasks.filter(task => task.complexityScore >= report.meta.thresholdScore);
+  const simpleTasks = sortedTasks.filter(task => task.complexityScore < report.meta.thresholdScore);
+  
+  // Create progress bar to show complexity distribution
+  const complexityDistribution = [0, 0, 0]; // Low (0-4), Medium (5-7), High (8-10)
+  sortedTasks.forEach(task => {
+    if (task.complexityScore < 5) complexityDistribution[0]++;
+    else if (task.complexityScore < 8) complexityDistribution[1]++;
+    else complexityDistribution[2]++;
+  });
+  
+  const percentLow = Math.round((complexityDistribution[0] / sortedTasks.length) * 100);
+  const percentMedium = Math.round((complexityDistribution[1] / sortedTasks.length) * 100);
+  const percentHigh = Math.round((complexityDistribution[2] / sortedTasks.length) * 100);
+  
+  console.log(boxen(
+    chalk.white.bold('Complexity Distribution\n\n') +
+    `${chalk.green.bold('Low (1-4):')} ${complexityDistribution[0]} tasks (${percentLow}%)\n` +
+    `${chalk.yellow.bold('Medium (5-7):')} ${complexityDistribution[1]} tasks (${percentMedium}%)\n` +
+    `${chalk.red.bold('High (8-10):')} ${complexityDistribution[2]} tasks (${percentHigh}%)`,
+    { padding: 1, borderColor: 'cyan', borderStyle: 'round', margin: { top: 1, bottom: 1 } }
+  ));
+  
+  // Create table for tasks that need expansion
+  if (tasksNeedingExpansion.length > 0) {
+    console.log(boxen(
+      chalk.yellow.bold(`Tasks Recommended for Expansion (${tasksNeedingExpansion.length})`),
+      { padding: { left: 2, right: 2, top: 0, bottom: 0 }, margin: { top: 1, bottom: 0 }, borderColor: 'yellow', borderStyle: 'round' }
+    ));
+    
+    const complexTable = new Table({
+      head: [
+        chalk.yellow.bold('ID'), 
+        chalk.yellow.bold('Title'), 
+        chalk.yellow.bold('Score'),
+        chalk.yellow.bold('Subtasks'),
+        chalk.yellow.bold('Expansion Command')
+      ],
+      colWidths: [5, 40, 8, 10, 45],
+      style: { head: [], border: [] }
+    });
+    
+    tasksNeedingExpansion.forEach(task => {
+      complexTable.push([
+        task.taskId,
+        truncate(task.taskTitle, 37),
+        getComplexityWithColor(task.complexityScore),
+        task.recommendedSubtasks,
+        chalk.cyan(`node scripts/dev.js expand --id=${task.taskId} --num=${task.recommendedSubtasks}`)
+      ]);
+    });
+    
+    console.log(complexTable.toString());
+  }
+  
+  // Create table for simple tasks
+  if (simpleTasks.length > 0) {
+    console.log(boxen(
+      chalk.green.bold(`Simple Tasks (${simpleTasks.length})`),
+      { padding: { left: 2, right: 2, top: 0, bottom: 0 }, margin: { top: 1, bottom: 0 }, borderColor: 'green', borderStyle: 'round' }
+    ));
+    
+    const simpleTable = new Table({
+      head: [
+        chalk.green.bold('ID'), 
+        chalk.green.bold('Title'), 
+        chalk.green.bold('Score'),
+        chalk.green.bold('Reasoning')
+      ],
+      colWidths: [5, 40, 8, 50],
+      style: { head: [], border: [] }
+    });
+    
+    simpleTasks.forEach(task => {
+      simpleTable.push([
+        task.taskId,
+        truncate(task.taskTitle, 37),
+        getComplexityWithColor(task.complexityScore),
+        truncate(task.reasoning, 47)
+      ]);
+    });
+    
+    console.log(simpleTable.toString());
+  }
+  
+  // Show action suggestions
+  console.log(boxen(
+    chalk.white.bold('Suggested Actions:') + '\n\n' +
+    `${chalk.cyan('1.')} Expand all complex tasks: ${chalk.yellow(`node scripts/dev.js expand --all`)}\n` +
+    `${chalk.cyan('2.')} Expand a specific task: ${chalk.yellow(`node scripts/dev.js expand --id=<id>`)}\n` +
+    `${chalk.cyan('3.')} Regenerate with research: ${chalk.yellow(`node scripts/dev.js analyze-complexity --research`)}`,
+    { padding: 1, borderColor: 'cyan', borderStyle: 'round', margin: { top: 1 } }
+  ));
+}
+
+// Helper function to get complexity score with appropriate color
+function getComplexityWithColor(score) {
+  if (score >= 8) {
+    return chalk.red.bold(score);
+  } else if (score >= 5) {
+    return chalk.yellow(score);
+  } else {
+    return chalk.green(score);
+  }
+}
+
+// Helper function to truncate text
+function truncate(text, maxLength) {
+  if (!text) return '';
+  return text.length > maxLength ? text.substring(0, maxLength - 3) + '...' : text;
 }
