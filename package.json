@@ -1,6 +1,6 @@
 {
   "name": "claude-task-master",
-  "version": "1.4.10",
+  "version": "1.5.2",
   "description": "A task management system for AI-driven development with Claude",
   "main": "index.js",
   "type": "module",
@@ -26,10 +26,15 @@
   "license": "MIT",
   "dependencies": {
     "@anthropic-ai/sdk": "^0.39.0",
+    "boxen": "^8.0.1",
     "chalk": "^4.1.2",
+    "cli-table3": "^0.6.5",
     "commander": "^11.1.0",
     "dotenv": "^16.3.1",
+    "figlet": "^1.8.0",
+    "gradient-string": "^3.0.0",
     "openai": "^4.86.1",
+    "ora": "^8.2.0",
     "punycode": "^2.3.1"
   },
   "engines": {

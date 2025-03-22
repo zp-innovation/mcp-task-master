@@ -10,6 +10,7 @@ alwaysApply: true
   - Analyze task complexity with `node scripts/dev.js analyze-complexity --research` before breaking down tasks
   - Select tasks based on dependencies (all marked 'done'), priority level, and ID order
   - Clarify tasks by checking task files in tasks/ directory or asking for user input
+  - View specific task details using `node scripts/dev.js show --id=<id>` to understand implementation requirements
   - Break down complex tasks using `node scripts/dev.js expand --id=<id>` with appropriate flags
   - Clear existing subtasks if needed using `node scripts/dev.js clear-subtasks --id=<id>` before regenerating
   - Implement code following task details, dependencies, and project standards
@@ -149,6 +150,8 @@ alwaysApply: true
   - **description**: Concise summary of what the task involves (Example: `"Create a new repository, set up initial structure."`)
   - **status**: Current state of the task (Example: `"pending"`, `"done"`, `"deferred"`)
   - **dependencies**: IDs of prerequisite tasks (Example: `[1, 2]`)
+    - Dependencies are displayed with status indicators (✅ for completed, ⏱️ for pending)
+    - This helps quickly identify which prerequisite tasks are blocking work
   - **priority**: Importance level (Example: `"high"`, `"medium"`, `"low"`)
   - **details**: In-depth implementation instructions (Example: `"Use GitHub client ID/secret, handle callback, set session token."`)
   - **testStrategy**: Verification approach (Example: `"Deploy and call endpoint to confirm 'Hello World' response."`)
@@ -167,3 +170,52 @@ alwaysApply: true
   - **PROJECT_VERSION** (Default: `"1.0.0"`): Version in metadata (Example: `PROJECT_VERSION=2.1.0`)
   - **PERPLEXITY_API_KEY**: For research-backed features (Example: `PERPLEXITY_API_KEY=pplx-...`)
   - **PERPLEXITY_MODEL** (Default: `"sonar-medium-online"`): Perplexity model (Example: `PERPLEXITY_MODEL=sonar-large-online`)
+
+- **Determining the Next Task**
+  - Run `node scripts/dev.js next` to show the next task to work on
+  - The next command identifies tasks with all dependencies satisfied
+  - Tasks are prioritized by priority level, dependency count, and ID
+  - The command shows comprehensive task information including:
+    - Basic task details and description
+    - Implementation details
+    - Subtasks (if they exist)
+    - Contextual suggested actions
+  - Recommended before starting any new development work
+  - Respects your project's dependency structure
+  - Ensures tasks are completed in the appropriate sequence
+  - Provides ready-to-use commands for common task actions
+
+- **Viewing Specific Task Details**
+  - Run `node scripts/dev.js show --id=<id>` or `node scripts/dev.js show <id>` to view a specific task
+  - Use dot notation for subtasks: `node scripts/dev.js show 1.2` (shows subtask 2 of task 1)
+  - Displays comprehensive information similar to the next command, but for a specific task
+  - For parent tasks, shows all subtasks and their current status
+  - For subtasks, shows parent task information and relationship
+  - Provides contextual suggested actions appropriate for the specific task
+  - Useful for examining task details before implementation or checking status
+
+- **Managing Task Dependencies**
+  - Use `node scripts/dev.js add-dependency --id=<id> --depends-on=<id>` to add a dependency
+  - Use `node scripts/dev.js remove-dependency --id=<id> --depends-on=<id>` to remove a dependency
+  - The system prevents circular dependencies and duplicate dependency entries
+  - Dependencies are checked for existence before being added or removed
+  - Task files are automatically regenerated after dependency changes
+  - Dependencies are visualized with status indicators in task listings and files
+
+- **Command Reference: add-dependency**
+  - Syntax: `node scripts/dev.js add-dependency --id=<id> --depends-on=<id>`
+  - Description: Adds a dependency relationship between two tasks
+  - Parameters:
+    - `--id=<id>`: ID of task that will depend on another task (required)
+    - `--depends-on=<id>`: ID of task that will become a dependency (required)
+  - Example: `node scripts/dev.js add-dependency --id=22 --depends-on=21`
+  - Notes: Prevents circular dependencies and duplicates; updates task files automatically
+
+- **Command Reference: remove-dependency**
+  - Syntax: `node scripts/dev.js remove-dependency --id=<id> --depends-on=<id>`
+  - Description: Removes a dependency relationship between two tasks
+  - Parameters:
+    - `--id=<id>`: ID of task to remove dependency from (required)
+    - `--depends-on=<id>`: ID of task to remove as a dependency (required)
+  - Example: `node scripts/dev.js remove-dependency --id=22 --depends-on=21`
+  - Notes: Checks if dependency actually exists; updates task files automatically

@@ -56,6 +56,31 @@
  *      -> Clears subtasks from specified tasks
  *      -> Supports comma-separated IDs for clearing multiple tasks: --id=1,2,3,1.1,1.2
  *      -> Use --all to clear subtasks from all tasks
+ *   
+ *   9) next
+ *      -> Shows the next task to work on based on dependencies and status
+ *      -> Prioritizes tasks whose dependencies are all satisfied
+ *      -> Orders eligible tasks by priority, dependency count, and ID
+ *      -> Displays comprehensive information about the selected task
+ *      -> Shows subtasks if they exist
+ *      -> Provides contextual action commands for the next steps
+ *
+ *   10) show [id] or show --id=<id>
+ *      -> Shows details of a specific task by ID
+ *      -> Displays the same comprehensive information as the 'next' command
+ *      -> Handles both regular tasks and subtasks (e.g., 1.2)
+ *      -> For subtasks, shows parent task information and link
+ *      -> Provides contextual action commands tailored to the specific task
+ *
+ *   11) add-dependency --id=<id> --depends-on=<id>
+ *      -> Adds a dependency to a task
+ *      -> Checks if the dependency already exists before adding
+ *      -> Prevents circular dependencies
+ *      -> Automatically sorts dependencies for clarity
+ *
+ *   12) remove-dependency --id=<id> --depends-on=<id>
+ *      -> Removes a dependency from a task
+ *      -> Checks if the dependency exists before attempting to remove
  *
  * Usage examples:
  *   node dev.js parse-prd --input=sample-prd.txt
@@ -73,6 +98,11 @@
  *   node dev.js analyze-complexity --threshold=6 --model=claude-3.7-sonnet
  *   node dev.js analyze-complexity --research
  *   node dev.js clear-subtasks --id=1,2,3 --all
+ *   node dev.js next
+ *   node dev.js show 1
+ *   node dev.js show --id=1.2
+ *   node dev.js add-dependency --id=22 --depends-on=21
+ *   node dev.js remove-dependency --id=22 --depends-on=21
  */
 
 import fs from 'fs';
@@ -85,6 +115,11 @@ import chalk from 'chalk';
 import { Anthropic } from '@anthropic-ai/sdk';
 import OpenAI from 'openai';
 import dotenv from 'dotenv';
+import figlet from 'figlet';
+import boxen from 'boxen';
+import ora from 'ora';
+import Table from 'cli-table3';
+import gradient from 'gradient-string';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -97,11 +132,20 @@ const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
 });
 
-// Configure OpenAI client for Perplexity
-const perplexity = new OpenAI({
-  apiKey: process.env.PERPLEXITY_API_KEY,
-  baseURL: 'https://api.perplexity.ai',
-});
+// Configure OpenAI client for Perplexity - make it lazy
+let perplexity = null;
+function getPerplexityClient() {
+  if (!perplexity) {
+    if (!process.env.PERPLEXITY_API_KEY) {
+      throw new Error("PERPLEXITY_API_KEY environment variable is missing. Set it to use research-backed features.");
+    }
+    perplexity = new OpenAI({
+      apiKey: process.env.PERPLEXITY_API_KEY,
+      baseURL: 'https://api.perplexity.ai',
+    });
+  }
+  return perplexity;
+}
 
 // Model configuration
 const MODEL = process.env.MODEL || 'claude-3-7-sonnet-20250219';
@@ -118,8 +162,8 @@ const CONFIG = {
   logLevel: process.env.LOG_LEVEL || "info",
   defaultSubtasks: parseInt(process.env.DEFAULT_SUBTASKS || "3"),
   defaultPriority: process.env.DEFAULT_PRIORITY || "medium",
-  projectName: process.env.PROJECT_NAME || "MCP SaaS MVP",
-  projectVersion: process.env.PROJECT_VERSION || "1.0.0"
+  projectName: process.env.PROJECT_NAME || "Task Master",
+  projectVersion: "1.5.0" // Hardcoded version - ALWAYS use this value, ignore environment variable
 };
 
 // Set up logging based on log level
@@ -130,14 +174,63 @@ const LOG_LEVELS = {
   error: 3
 };
 
+// Create a color gradient for the banner
+const coolGradient = gradient(['#00b4d8', '#0077b6', '#03045e']);
+const warmGradient = gradient(['#fb8b24', '#e36414', '#9a031e']);
+
+// Display a fancy banner
+function displayBanner() {
+  console.clear();
+  const bannerText = figlet.textSync('Claude Task Master', {
+    font: 'Standard',
+    horizontalLayout: 'default',
+    verticalLayout: 'default'
+  });
+  
+  console.log(coolGradient(bannerText));
+  
+  // Read version directly from package.json
+  let version = "1.5.0"; // Default fallback
+  try {
+    const packageJsonPath = path.join(__dirname, '..', 'package.json');
+    if (fs.existsSync(packageJsonPath)) {
+      const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
+      version = packageJson.version;
+    }
+  } catch (error) {
+    // Silently fall back to default version
+  }
+  
+  console.log(boxen(chalk.white(`${chalk.bold('Version:')} ${version}   ${chalk.bold('Project:')} ${CONFIG.projectName}`), {
+    padding: 1,
+    margin: { top: 0, bottom: 1 },
+    borderStyle: 'round',
+    borderColor: 'cyan'
+  }));
+}
+
 function log(level, ...args) {
+  const icons = {
+    debug: chalk.gray('🔍'),
+    info: chalk.blue('ℹ️'),
+    warn: chalk.yellow('⚠️'),
+    error: chalk.red('❌'),
+    success: chalk.green('✅')
+  };
+  
   if (LOG_LEVELS[level] >= LOG_LEVELS[CONFIG.logLevel]) {
+    const icon = icons[level] || '';
+    
     if (level === 'error') {
-      console.error(...args);
+      console.error(icon, chalk.red(...args));
     } else if (level === 'warn') {
-      console.warn(...args);
+      console.warn(icon, chalk.yellow(...args));
+    } else if (level === 'success') {
+      console.log(icon, chalk.green(...args));
+    } else if (level === 'info') {
+      console.log(icon, chalk.blue(...args));
     } else {
-      console.log(...args);
+      console.log(icon, ...args);
     }
   }
   
@@ -159,24 +252,21 @@ function writeJSON(filepath, data) {
   fs.writeFileSync(filepath, JSON.stringify(data, null, 2), 'utf8');
 }
 
-// Add a simple loading indicator function
+// Replace the simple loading indicator with ora spinner
 function startLoadingIndicator(message) {
-  const frames = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
-  let i = 0;
+  const spinner = ora({
+    text: message,
+    color: 'cyan',
+    spinner: 'dots'
+  }).start();
   
-  process.stdout.write(`${message} `);
-  
-  return setInterval(() => {
-    readline.cursorTo(process.stdout, message.length + 1);
-    process.stdout.write(frames[i]);
-    i = (i + 1) % frames.length;
-  }, 80);
+  return spinner;
 }
 
-function stopLoadingIndicator(interval) {
-  clearInterval(interval);
-  readline.cursorTo(process.stdout, 0);
-  readline.clearLine(process.stdout, 0);
+function stopLoadingIndicator(spinner) {
+  if (spinner && spinner.stop) {
+    spinner.stop();
+  }
 }
 
 async function callClaude(prdContent, prdPath, numTasks, retryCount = 0) {
@@ -424,10 +514,18 @@ function processClaudeResponse(textContent, numTasks, retryCount, prdContent, pr
 // 1) parse-prd
 //
 async function parsePRD(prdPath, tasksPath, numTasks) {
+  displayBanner();
+  
   if (!fs.existsSync(prdPath)) {
     log('error', `PRD file not found: ${prdPath}`);
     process.exit(1);
   }
+
+  const headerBox = boxen(
+    chalk.white.bold(`Parsing PRD Document: ${chalk.cyan(path.basename(prdPath))}`), 
+    { padding: 1, borderColor: 'blue', borderStyle: 'round', margin: { top: 1, bottom: 1 } }
+  );
+  console.log(headerBox);
 
   log('info', `Reading PRD file from: ${prdPath}`);
   const prdContent = fs.readFileSync(prdPath, 'utf8');
@@ -437,9 +535,12 @@ async function parsePRD(prdPath, tasksPath, numTasks) {
   log('info', "Calling Claude to generate tasks from PRD...");
   
   try {
+    const loadingSpinner = startLoadingIndicator('Generating tasks with Claude AI');
     const claudeResponse = await callClaude(prdContent, prdPath, numTasks);
     let tasks = claudeResponse.tasks || [];
-    log('info', `Claude generated ${tasks.length} tasks from the PRD`);
+    stopLoadingIndicator(loadingSpinner);
+    
+    log('success', `Claude generated ${tasks.length} tasks from the PRD`);
 
     // Limit the number of tasks if specified
     if (numTasks && numTasks > 0 && numTasks < tasks.length) {
@@ -462,7 +563,54 @@ async function parsePRD(prdPath, tasksPath, numTasks) {
 
     log('info', `Writing ${tasks.length} tasks to ${tasksPath}...`);
     writeJSON(tasksPath, data);
-    log('info', `Parsed PRD from '${prdPath}' -> wrote ${tasks.length} tasks to '${tasksPath}'.`);
+    
+    // Show success message in a box
+    const successBox = boxen(
+      chalk.green(`Successfully parsed PRD from: ${chalk.cyan(prdPath)}\n`) +
+      chalk.green(`Generated ${chalk.bold(tasks.length)} tasks in: ${chalk.cyan(tasksPath)}`),
+      { padding: 1, borderColor: 'green', borderStyle: 'round', margin: { top: 1 } }
+    );
+    console.log(successBox);
+    
+    // Show the first few tasks in a table
+    const previewTasks = tasks.slice(0, Math.min(5, tasks.length));
+    const taskTable = new Table({
+      head: [chalk.cyan.bold('ID'), chalk.cyan.bold('Title'), chalk.cyan.bold('Priority')],
+      colWidths: [6, 60, 12],
+      style: { head: [], border: [] }
+    });
+    
+    previewTasks.forEach(task => {
+      taskTable.push([
+        task.id.toString(),
+        task.title,
+        chalk.yellow(task.priority || 'medium')
+      ]);
+    });
+    
+    if (tasks.length > 5) {
+      taskTable.push([
+        '...',
+        chalk.dim(`${tasks.length - 5} more tasks`),
+        ''
+      ]);
+    }
+    
+    console.log(boxen(
+      chalk.white.bold('Task Preview:'),
+      { padding: { left: 2, right: 2, top: 0, bottom: 0 }, margin: { top: 1, bottom: 0 }, borderColor: 'blue', borderStyle: 'round' }
+    ));
+    console.log(taskTable.toString());
+    
+    // Next steps suggestion
+    console.log(boxen(
+      chalk.white.bold('Next Steps:') + '\n\n' +
+      `${chalk.cyan('1.')} Run ${chalk.yellow('node scripts/dev.js generate')} to create individual task files\n` +
+      `${chalk.cyan('2.')} Run ${chalk.yellow('node scripts/dev.js list')} to see all tasks\n` +
+      `${chalk.cyan('3.')} Run ${chalk.yellow('node scripts/dev.js analyze-complexity')} to plan task breakdown`,
+      { padding: 1, borderColor: 'cyan', borderStyle: 'round', margin: { top: 1 } }
+    ));
+    
   } catch (error) {
     log('error', "Failed to generate tasks:", error.message);
     process.exit(1);
@@ -577,7 +725,7 @@ function generateTaskFiles(tasksPath, outputDir) {
       `# Task ID: ${task.id}`,
       `# Title: ${task.title}`,
       `# Status: ${task.status}`,
-      `# Dependencies: ${task.dependencies.join(", ")}`,
+      `# Dependencies: ${formatDependenciesWithStatus(task.dependencies, data.tasks, false)}`,
       `# Priority: ${task.priority}`,
       `# Description: ${task.description}`,
       `# Details:\n${task.details}\n`,
@@ -589,10 +737,14 @@ function generateTaskFiles(tasksPath, outputDir) {
     if (task.subtasks && task.subtasks.length > 0) {
       contentParts.push(`# Subtasks:`);
       task.subtasks.forEach(subtask => {
+        const subtaskDeps = subtask.dependencies 
+          ? formatDependenciesWithStatus(subtask.dependencies, data.tasks, false)
+          : "";
+          
         contentParts.push(`## Subtask ID: ${subtask.id}`);
         contentParts.push(`## Title: ${subtask.title}`);
         contentParts.push(`## Status: ${subtask.status}`);
-        contentParts.push(`## Dependencies: ${subtask.dependencies ? subtask.dependencies.join(", ") : ""}`);
+        contentParts.push(`## Dependencies: ${subtaskDeps}`);
         contentParts.push(`## Description: ${subtask.description}`);
         if (subtask.acceptanceCriteria) {
           contentParts.push(`## Acceptance Criteria:\n${subtask.acceptanceCriteria}\n`);
@@ -612,6 +764,8 @@ function generateTaskFiles(tasksPath, outputDir) {
 // 4) set-status
 //
 function setTaskStatus(tasksPath, taskIdInput, newStatus) {
+  displayBanner();
+  
   // Validate inputs
   if (!taskIdInput || !newStatus) {
     log('error', 'Task ID and new status are required');
@@ -625,18 +779,123 @@ function setTaskStatus(tasksPath, taskIdInput, newStatus) {
     process.exit(1);
   }
 
+  console.log(boxen(
+    chalk.white.bold(`Updating Task Status to: ${getStatusWithColor(newStatus)}`),
+    { padding: 1, borderColor: 'blue', borderStyle: 'round', margin: { top: 1, bottom: 1 } }
+  ));
+
   // Handle multiple task IDs (comma-separated)
   if (typeof taskIdInput === 'string' && taskIdInput.includes(',')) {
     const taskIds = taskIdInput.split(',').map(id => id.trim());
     log('info', `Processing multiple task IDs: ${taskIds.join(', ')}`);
     
+    // Create a summary table for the updates
+    const summaryTable = new Table({
+      head: [
+        chalk.cyan.bold('ID'), 
+        chalk.cyan.bold('Title'), 
+        chalk.cyan.bold('Old Status'), 
+        chalk.cyan.bold('New Status')
+      ],
+      colWidths: [8, 40, 15, 15],
+      style: { head: [], border: [] }
+    });
+    
     // Process each task ID individually
     taskIds.forEach(id => {
-      setTaskStatus(tasksPath, id, newStatus);
+      const result = updateSingleTaskStatus(tasksPath, id, newStatus, data);
+      if (result) {
+        summaryTable.push([
+          result.id,
+          truncate(result.title, 37),
+          getStatusWithColor(result.oldStatus),
+          getStatusWithColor(result.newStatus)
+        ]);
+        
+        // Add subtask updates if any
+        if (result.subtasks && result.subtasks.length > 0) {
+          result.subtasks.forEach(sub => {
+            summaryTable.push([
+              `  ${sub.id}`,
+              `  ↳ ${truncate(sub.title, 35)}`,
+              getStatusWithColor(sub.oldStatus),
+              getStatusWithColor(sub.newStatus)
+            ]);
+          });
+        }
+      }
     });
+    
+    // Save the changes
+    writeJSON(tasksPath, data);
+    
+    // Regenerate task files
+    log('info', "Regenerating task files...");
+    generateTaskFiles(tasksPath, path.dirname(tasksPath));
+    
+    // Show the summary table
+    console.log(boxen(
+      chalk.white.bold('Status Update Summary:'),
+      { padding: { left: 2, right: 2, top: 0, bottom: 0 }, margin: { top: 1, bottom: 0 }, borderColor: 'blue', borderStyle: 'round' }
+    ));
+    console.log(summaryTable.toString());
+    
     return;
   }
 
+  // Handle regular task ID or subtask ID
+  const result = updateSingleTaskStatus(tasksPath, taskIdInput, newStatus, data);
+  
+  if (result) {
+    // Save the changes
+    writeJSON(tasksPath, data);
+    
+    // Regenerate task files
+    log('info', "Regenerating task files...");
+    generateTaskFiles(tasksPath, path.dirname(tasksPath));
+    
+    // Show success message
+    const successBox = boxen(
+      chalk.green(`Successfully updated task ${chalk.bold(result.id)} status:\n`) +
+      `From: ${getStatusWithColor(result.oldStatus)}\n` +
+      `To:   ${getStatusWithColor(result.newStatus)}`,
+      { padding: 1, borderColor: 'green', borderStyle: 'round', margin: { top: 1 } }
+    );
+    console.log(successBox);
+    
+    // If subtasks were also updated, show them
+    if (result.subtasks && result.subtasks.length > 0) {
+      const subtaskTable = new Table({
+        head: [
+          chalk.cyan.bold('ID'), 
+          chalk.cyan.bold('Title'), 
+          chalk.cyan.bold('Old Status'), 
+          chalk.cyan.bold('New Status')
+        ],
+        colWidths: [8, 40, 15, 15],
+        style: { head: [], border: [] }
+      });
+      
+      result.subtasks.forEach(sub => {
+        subtaskTable.push([
+          sub.id,
+          truncate(sub.title, 37),
+          getStatusWithColor(sub.oldStatus),
+          getStatusWithColor(sub.newStatus)
+        ]);
+      });
+      
+      console.log(boxen(
+        chalk.white.bold('Subtasks Also Updated:'),
+        { padding: { left: 2, right: 2, top: 0, bottom: 0 }, margin: { top: 1, bottom: 0 }, borderColor: 'blue', borderStyle: 'round' }
+      ));
+      console.log(subtaskTable.toString());
+    }
+  }
+}
+
+// Helper function to update a single task status and return details for UI
+function updateSingleTaskStatus(tasksPath, taskIdInput, newStatus, data) {
   // Handle subtask IDs (e.g., "1.1")
   if (String(taskIdInput).includes('.')) {
     const [parentIdStr, subtaskIdStr] = String(taskIdInput).split('.');
@@ -645,61 +904,66 @@ function setTaskStatus(tasksPath, taskIdInput, newStatus) {
 
     if (isNaN(parentId) || isNaN(subtaskId)) {
       log('error', `Invalid subtask ID format: ${taskIdInput}`);
-      process.exit(1);
+      return null;
     }
 
     // Find the parent task
     const parentTask = data.tasks.find(t => t.id === parentId);
     if (!parentTask) {
       log('error', `Parent task ${parentId} not found`);
-      process.exit(1);
+      return null;
     }
 
     // Ensure subtasks array exists
     if (!parentTask.subtasks || !Array.isArray(parentTask.subtasks)) {
       log('error', `Parent task ${parentId} has no subtasks array`);
-      process.exit(1);
+      return null;
     }
 
     // Find and update the subtask
     const subtask = parentTask.subtasks.find(st => st.id === subtaskId);
     if (!subtask) {
       log('error', `Subtask ${subtaskId} not found in task ${parentId}`);
-      process.exit(1);
+      return null;
     }
 
     // Update the subtask status
     const oldStatus = subtask.status || 'pending';
     subtask.status = newStatus;
     
-    // Save the changes
-    writeJSON(tasksPath, data);
-    log('info', `Updated subtask ${parentId}.${subtaskId} status from '${oldStatus}' to '${newStatus}'`);
-    
-    // Add call to generate task files
-    log('info', "Regenerating task files...");
-    generateTaskFiles(tasksPath, path.dirname(tasksPath));
-    
-    return;
+    return {
+      id: `${parentId}.${subtaskId}`,
+      title: subtask.title,
+      oldStatus: oldStatus,
+      newStatus: newStatus
+    };
   }
 
   // Handle regular task ID
   const taskId = parseInt(String(taskIdInput), 10);
   if (isNaN(taskId)) {
     log('error', `Invalid task ID: ${taskIdInput}`);
-    process.exit(1);
+    return null;
   }
 
   // Find the task
   const task = data.tasks.find(t => t.id === taskId);
   if (!task) {
     log('error', `Task ${taskId} not found`);
-    process.exit(1);
+    return null;
   }
 
   // Update the task status
   const oldStatus = task.status || 'pending';
   task.status = newStatus;
+  
+  const result = {
+    id: taskId.toString(),
+    title: task.title,
+    oldStatus: oldStatus,
+    newStatus: newStatus,
+    subtasks: []
+  };
   
   // Automatically update subtasks if the parent task is being marked as done
   if (newStatus === 'done' && task.subtasks && Array.isArray(task.subtasks) && task.subtasks.length > 0) {
@@ -708,51 +972,200 @@ function setTaskStatus(tasksPath, taskIdInput, newStatus) {
     task.subtasks.forEach(subtask => {
       const oldSubtaskStatus = subtask.status || 'pending';
       subtask.status = newStatus;
-      log('info', `  └─ Updated subtask ${taskId}.${subtask.id} status from '${oldSubtaskStatus}' to '${newStatus}'`);
+      
+      result.subtasks.push({
+        id: `${taskId}.${subtask.id}`,
+        title: subtask.title,
+        oldStatus: oldSubtaskStatus,
+        newStatus: newStatus
+      });
     });
   }
   
-  // Save the changes
-  writeJSON(tasksPath, data);
-  log('info', `Updated task ${taskId} status from '${oldStatus}' to '${newStatus}'`);
+  return result;
+}
+
+/**
+ * Get a colored version of the status string
+ * @param {string} status - The status string
+ * @returns {string} - The colored status string
+ */
+function getStatusWithColor(status) {
+  const statusColor = {
+    'done': chalk.green,
+    'completed': chalk.green,
+    'pending': chalk.yellow,
+    'in-progress': chalk.blue,
+    'deferred': chalk.gray
+  }[status] || chalk.white;
   
-  // Add call to generate task files
-  log('info', "Regenerating task files...");
-  generateTaskFiles(tasksPath, path.dirname(tasksPath));
+  return statusColor(status);
+}
+
+/**
+ * Format dependencies with emoji indicators for completion status
+ * In CLI/console output use colors, in file output use emojis
+ * @param {Array} dependencies - Array of dependency IDs
+ * @param {Array} allTasks - Array of all tasks
+ * @param {boolean} forConsole - Whether this is for console output (true) or file output (false)
+ * @returns {string} - Formatted dependencies with status indicators
+ */
+function formatDependenciesWithStatus(dependencies, allTasks, forConsole = false) {
+  if (!dependencies || dependencies.length === 0) {
+    return 'None';
+  }
+  
+  // Create a set of completed task IDs for quick lookup
+  const completedTaskIds = new Set(
+    allTasks
+      .filter(t => t.status === 'done' || t.status === 'completed')
+      .map(t => t.id)
+  );
+  
+  // Map each dependency to include its status indicator
+  return dependencies.map(depId => {
+    const isDone = completedTaskIds.has(depId);
+    
+    if (forConsole) {
+      // For console output, use colors
+      if (isDone) {
+        return chalk.green(depId.toString());
+      } else {
+        // Check if it's in progress
+        const depTask = allTasks.find(t => t.id === depId);
+        if (depTask && depTask.status === 'in-progress') {
+          return chalk.yellow(depId.toString());
+        } else {
+          return chalk.red(depId.toString());
+        }
+      }
+    } else {
+      // For file output, use emojis
+      const statusEmoji = isDone ? '✅' : '⏱️';
+      return `${depId} ${statusEmoji}`;
+    }
+  }).join(', ');
 }
 
 //
 // 5) list tasks
 //
 function listTasks(tasksPath, statusFilter, withSubtasks = false) {
+  displayBanner();
+  
   const data = readJSON(tasksPath);
   if (!data || !data.tasks) {
     log('error', "No valid tasks found.");
     process.exit(1);
   }
 
-  log('info', `Tasks in ${tasksPath}:`);
-  
   // Filter tasks by status if a filter is provided
   const filteredTasks = statusFilter 
     ? data.tasks.filter(t => t.status === statusFilter)
     : data.tasks;
   
+  // Create a table for better visualization
+  const table = new Table({
+    head: [
+      chalk.cyan.bold('ID'), 
+      chalk.cyan.bold('Status'), 
+      chalk.cyan.bold('Priority'),
+      chalk.cyan.bold('Title')
+    ],
+    colWidths: [8, 15, 12, 60],
+    style: {
+      head: [],
+      border: []
+    }
+  });
+  
+  // Status colors
+  const statusColors = {
+    'done': chalk.green,
+    'completed': chalk.green,
+    'pending': chalk.yellow,
+    'deferred': chalk.gray,
+    'in-progress': chalk.blue,
+    'blocked': chalk.red
+  };
+  
+  // Priority colors
+  const priorityColors = {
+    'high': chalk.red.bold,
+    'medium': chalk.yellow,
+    'low': chalk.gray
+  };
+  
   filteredTasks.forEach(t => {
-    log('info', `- ID=${t.id}, [${t.status}] ${t.title}`);
+    const statusColor = statusColors[t.status] || chalk.white;
+    const priorityColor = priorityColors[t.priority] || chalk.white;
+    
+    table.push([
+      t.id.toString(), 
+      statusColor(t.status), 
+      priorityColor(t.priority || 'medium'),
+      t.title
+    ]);
     
     // Display subtasks if requested and they exist
     if (withSubtasks && t.subtasks && t.subtasks.length > 0) {
       t.subtasks.forEach(st => {
-        log('info', `  └─ ID=${t.id}.${st.id}, [${st.status || 'pending'}] ${st.title}`);
+        const subtaskStatusColor = statusColors[st.status || 'pending'] || chalk.white;
+        table.push([
+          `  ${t.id}.${st.id}`, 
+          subtaskStatusColor(st.status || 'pending'), 
+          '',
+          `  ↳ ${st.title}`
+        ]);
       });
     }
   });
   
-  // If no tasks match the filter, show a message
   if (filteredTasks.length === 0) {
-    log('info', `No tasks found${statusFilter ? ` with status '${statusFilter}'` : ''}.`);
+    console.log(boxen(
+      chalk.yellow(`No tasks found${statusFilter ? ` with status '${statusFilter}'` : ''}.`),
+      { padding: 1, borderColor: 'yellow', borderStyle: 'round' }
+    ));
+  } else {
+    // Display the header with task count and filter info
+    const header = statusFilter 
+      ? `Tasks with status: ${chalk.bold(statusFilter)} (${filteredTasks.length} of ${data.tasks.length} total)`
+      : `All Tasks (${filteredTasks.length})`;
+    
+    console.log(boxen(chalk.white.bold(header), {
+      padding: { left: 2, right: 2, top: 0, bottom: 0 },
+      margin: { top: 1, bottom: 1 },
+      borderColor: 'blue',
+      borderStyle: 'round'
+    }));
+    
+    console.log(table.toString());
+    
+    // Summary box
+    const doneCount = data.tasks.filter(t => t.status === 'done' || t.status === 'completed').length;
+    const pendingCount = data.tasks.filter(t => t.status === 'pending').length;
+    const otherCount = data.tasks.length - doneCount - pendingCount;
+    
+    const progressPercent = Math.round((doneCount / data.tasks.length) * 100);
+    const progressBar = createProgressBar(progressPercent, 30);
+    
+    console.log(boxen(
+      `${chalk.bold('Project Progress:')} ${progressBar} ${progressPercent}%\n` +
+      `${chalk.green.bold('Done:')} ${doneCount}  ${chalk.yellow.bold('Pending:')} ${pendingCount}  ${chalk.gray.bold('Other:')} ${otherCount}`,
+      { padding: 1, borderColor: 'cyan', borderStyle: 'round', margin: { top: 1 } }
+    ));
   }
+}
+
+// Helper function to create a progress bar
+function createProgressBar(percent, length) {
+  const filledLength = Math.round(length * percent / 100);
+  const emptyLength = length - filledLength;
+  
+  const filled = '█'.repeat(filledLength);
+  const empty = '░'.repeat(emptyLength);
+  
+  return chalk.green(filled) + chalk.gray(empty);
 }
 
 //
@@ -1487,7 +1900,7 @@ Format your response as specific, well-defined subtasks that could be assigned t
     try {
       // Try to use Perplexity first
       console.log(chalk.blue('Using Perplexity AI for research-backed subtask generation...'));
-      const result = await perplexity.chat.completions.create({
+      const result = await getPerplexityClient().chat.completions.create({
         model: PERPLEXITY_MODEL,
         messages: [
           {
@@ -1558,10 +1971,32 @@ Format your response as specific, well-defined subtasks that could be assigned t
 // Main CLI
 // ------------------------------------------
 async function main() {
+  // Add custom help
+  program.on('--help', function() {
+    displayHelp();
+  });
+  
+  if (process.argv.length <= 2) {
+    displayHelp();
+    process.exit(0);
+  }
+  
   program
     .name('dev')
     .description('AI-driven development task management')
-    .version('1.3.1');
+    .version(() => {
+      // Read version directly from package.json
+      try {
+        const packageJsonPath = path.join(__dirname, '..', 'package.json');
+        if (fs.existsSync(packageJsonPath)) {
+          const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
+          return packageJson.version;
+        }
+      } catch (error) {
+        // Silently fall back to default version
+      }
+      return "1.5.0"; // Default fallback
+    });
 
   program
     .command('parse-prd')
@@ -1675,7 +2110,11 @@ async function main() {
       const allFlag = options.all;
       const numSubtasks = parseInt(options.num, 10);
       const forceFlag = options.force;
-      const useResearch = options.research !== false; // Default to true unless explicitly disabled
+      // Fix: The issue is here - research should be false when --no-research is specified
+      // This will correctly check if research is false
+      const useResearch = options.research === true;
+      // Debug log to verify the value
+      console.log(`Debug - options.research value: ${options.research}`);
       const additionalContext = options.prompt || '';
       
       if (allFlag) {
@@ -1760,528 +2199,112 @@ async function main() {
       }
     });
 
-  await program.parseAsync(process.argv);
-}
-
-/**
- * Analyzes task complexity and generates expansion recommendations
- * @param {Object} options Command options
- */
-async function analyzeTaskComplexity(options) {
-  const tasksPath = options.file || 'tasks/tasks.json';
-  const outputPath = options.output || 'scripts/task-complexity-report.json';
-  const modelOverride = options.model;
-  const thresholdScore = parseFloat(options.threshold || '5');
-  const useResearch = options.research || false;
-  
-  console.log(chalk.blue(`Analyzing task complexity and generating expansion recommendations...`));
-  
-  try {
-    // Read tasks.json
-    console.log(chalk.blue(`Reading tasks from ${tasksPath}...`));
-    const tasksData = readJSON(tasksPath);
-    
-    if (!tasksData || !tasksData.tasks || !Array.isArray(tasksData.tasks) || tasksData.tasks.length === 0) {
-      throw new Error('No tasks found in the tasks file');
-    }
-    
-    console.log(chalk.blue(`Found ${tasksData.tasks.length} tasks to analyze.`));
-    
-    // Prepare the prompt for the LLM
-    const prompt = generateComplexityAnalysisPrompt(tasksData);
-    
-    // Start loading indicator
-    const loadingIndicator = startLoadingIndicator('Calling AI to analyze task complexity...');
-    
-    let fullResponse = '';
-    let streamingInterval = null;
-    
-    try {
-      // If research flag is set, use Perplexity first
-      if (useResearch) {
-        try {
-          console.log(chalk.blue('Using Perplexity AI for research-backed complexity analysis...'));
-          
-          // Modify prompt to include more context for Perplexity and explicitly request JSON
-          const researchPrompt = `You are conducting a detailed analysis of software development tasks to determine their complexity and how they should be broken down into subtasks.
-
-Please research each task thoroughly, considering best practices, industry standards, and potential implementation challenges before providing your analysis.
-
-CRITICAL: You MUST respond ONLY with a valid JSON array. Do not include ANY explanatory text, markdown formatting, or code block markers.
-
-${prompt}
-
-Your response must be a clean JSON array only, following exactly this format:
-[
-  {
-    "taskId": 1,
-    "taskTitle": "Example Task",
-    "complexityScore": 7,
-    "recommendedSubtasks": 4,
-    "expansionPrompt": "Detailed prompt for expansion",
-    "reasoning": "Explanation of complexity assessment"
-  },
-  // more tasks...
-]
-
-DO NOT include any text before or after the JSON array. No explanations, no markdown formatting.`;
-          
-          const result = await perplexity.chat.completions.create({
-            model: PERPLEXITY_MODEL,
-            messages: [
-              {
-                role: "system", 
-                content: "You are a technical analysis AI that only responds with clean, valid JSON. Never include explanatory text or markdown formatting in your response."
-              },
-              {
-                role: "user",
-                content: researchPrompt
-              }
-            ],
-            temperature: TEMPERATURE,
-            max_tokens: MAX_TOKENS,
-          });
-          
-          // Extract the response text
-          fullResponse = result.choices[0].message.content;
-          console.log(chalk.green('Successfully generated complexity analysis with Perplexity AI'));
-          
-          if (streamingInterval) clearInterval(streamingInterval);
-          stopLoadingIndicator(loadingIndicator);
-          
-          // ALWAYS log the first part of the response for debugging
-          console.log(chalk.gray('Response first 200 chars:'));
-          console.log(chalk.gray(fullResponse.substring(0, 200)));
-        } catch (perplexityError) {
-          console.log(chalk.yellow('Falling back to Claude for complexity analysis...'));
-          console.log(chalk.gray('Perplexity error:'), perplexityError.message);
-          
-          // Continue to Claude as fallback
-          await useClaudeForComplexityAnalysis();
-        }
-      } else {
-        // Use Claude directly if research flag is not set
-        await useClaudeForComplexityAnalysis();
-      }
+  program
+    .command('add-task')
+    .description('Add a new task to tasks.json using AI')
+    .option('-f, --file <file>', 'Path to the tasks file', 'tasks/tasks.json')
+    .option('-p, --prompt <text>', 'Description of the task to add (required)')
+    .option('-d, --dependencies <ids>', 'Comma-separated list of task IDs this task depends on')
+    .option('--priority <priority>', 'Task priority (high, medium, low)', 'medium')
+    .action(async (options) => {
+      const tasksPath = options.file;
+      const prompt = options.prompt;
+      const dependencies = options.dependencies ? options.dependencies.split(',').map(id => parseInt(id.trim(), 10)) : [];
+      const priority = options.priority;
       
-      // Helper function to use Claude for complexity analysis
-      async function useClaudeForComplexityAnalysis() {
-        // Call the LLM API with streaming
-        const stream = await anthropic.messages.create({
-          max_tokens: CONFIG.maxTokens,
-          model: modelOverride || CONFIG.model,
-          temperature: CONFIG.temperature,
-          messages: [{ role: "user", content: prompt }],
-          system: "You are an expert software architect and project manager analyzing task complexity. Respond only with valid JSON.",
-          stream: true
-        });
-        
-        // Update loading indicator to show streaming progress
-        let dotCount = 0;
-        streamingInterval = setInterval(() => {
-          readline.cursorTo(process.stdout, 0);
-          process.stdout.write(`Receiving streaming response from Claude${'.'.repeat(dotCount)}`);
-          dotCount = (dotCount + 1) % 4;
-        }, 500);
-        
-        // Process the stream
-        for await (const chunk of stream) {
-          if (chunk.type === 'content_block_delta' && chunk.delta.text) {
-            fullResponse += chunk.delta.text;
-          }
-        }
-        
-        clearInterval(streamingInterval);
-        stopLoadingIndicator(loadingIndicator);
-        
-        console.log(chalk.green("Completed streaming response from Claude API!"));
-      }
-      
-      // Parse the JSON response
-      console.log(chalk.blue(`Parsing complexity analysis...`));
-      let complexityAnalysis;
-      try {
-        // Clean up the response to ensure it's valid JSON
-        let cleanedResponse = fullResponse;
-        
-        // First check for JSON code blocks (common in markdown responses)
-        const codeBlockMatch = fullResponse.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
-        if (codeBlockMatch) {
-          cleanedResponse = codeBlockMatch[1];
-          console.log(chalk.blue("Extracted JSON from code block"));
-        } else {
-          // Look for a complete JSON array pattern
-          // This regex looks for an array of objects starting with [ and ending with ]
-          const jsonArrayMatch = fullResponse.match(/(\[\s*\{\s*"[^"]*"\s*:[\s\S]*\}\s*\])/);
-          if (jsonArrayMatch) {
-            cleanedResponse = jsonArrayMatch[1];
-            console.log(chalk.blue("Extracted JSON array pattern"));
-          } else {
-            // Try to find the start of a JSON array and capture to the end
-            const jsonStartMatch = fullResponse.match(/(\[\s*\{[\s\S]*)/);
-            if (jsonStartMatch) {
-              cleanedResponse = jsonStartMatch[1];
-              // Try to find a proper closing to the array
-              const properEndMatch = cleanedResponse.match(/([\s\S]*\}\s*\])/);
-              if (properEndMatch) {
-                cleanedResponse = properEndMatch[1];
-              }
-              console.log(chalk.blue("Extracted JSON from start of array to end"));
-            }
-          }
-        }
-        
-        // Log the cleaned response for debugging
-        console.log(chalk.gray("Attempting to parse cleaned JSON..."));
-        console.log(chalk.gray("Cleaned response (first 100 chars):"));
-        console.log(chalk.gray(cleanedResponse.substring(0, 100)));
-        console.log(chalk.gray("Last 100 chars:"));
-        console.log(chalk.gray(cleanedResponse.substring(cleanedResponse.length - 100)));
-        
-        // More aggressive cleaning - strip any non-JSON content at the beginning or end
-        const strictArrayMatch = cleanedResponse.match(/(\[\s*\{[\s\S]*\}\s*\])/);
-        if (strictArrayMatch) {
-          cleanedResponse = strictArrayMatch[1];
-          console.log(chalk.blue("Applied strict JSON array extraction"));
-        }
-        
-        try {
-          complexityAnalysis = JSON.parse(cleanedResponse);
-        } catch (jsonError) {
-          console.log(chalk.yellow("Initial JSON parsing failed, attempting to fix common JSON issues..."));
-          
-          // Try to fix common JSON issues
-          // 1. Remove any trailing commas in arrays or objects
-          cleanedResponse = cleanedResponse.replace(/,(\s*[\]}])/g, '$1');
-          
-          // 2. Ensure property names are double-quoted
-          cleanedResponse = cleanedResponse.replace(/(\s*)(\w+)(\s*):(\s*)/g, '$1"$2"$3:$4');
-          
-          // 3. Replace single quotes with double quotes for property values
-          cleanedResponse = cleanedResponse.replace(/:(\s*)'([^']*)'(\s*[,}])/g, ':$1"$2"$3');
-          
-          // 4. Add a special fallback option if we're still having issues
-          try {
-            complexityAnalysis = JSON.parse(cleanedResponse);
-            console.log(chalk.green("Successfully parsed JSON after fixing common issues"));
-          } catch (fixedJsonError) {
-            console.log(chalk.red("Failed to parse JSON even after fixes, attempting more aggressive cleanup..."));
-            
-            // Try to extract and process each task individually
-            try {
-              const taskMatches = cleanedResponse.match(/\{\s*"taskId"\s*:\s*(\d+)[^}]*\}/g);
-              if (taskMatches && taskMatches.length > 0) {
-                console.log(chalk.yellow(`Found ${taskMatches.length} task objects, attempting to process individually`));
-                
-                complexityAnalysis = [];
-                for (const taskMatch of taskMatches) {
-                  try {
-                    // Try to parse each task object individually
-                    const fixedTask = taskMatch.replace(/,\s*$/, ''); // Remove trailing commas
-                    const taskObj = JSON.parse(`${fixedTask}`);
-                    if (taskObj && taskObj.taskId) {
-                      complexityAnalysis.push(taskObj);
-                    }
-                  } catch (taskParseError) {
-                    console.log(chalk.yellow(`Could not parse individual task: ${taskMatch.substring(0, 30)}...`));
-                  }
-                }
-                
-                if (complexityAnalysis.length > 0) {
-                  console.log(chalk.green(`Successfully parsed ${complexityAnalysis.length} tasks individually`));
-                } else {
-                  throw new Error("Could not parse any tasks individually");
-                }
-              } else {
-                throw fixedJsonError;
-              }
-            } catch (individualError) {
-              console.log(chalk.red("All parsing attempts failed"));
-              throw jsonError; // throw the original error
-            }
-          }
-        }
-        
-        // Ensure complexityAnalysis is an array
-        if (!Array.isArray(complexityAnalysis)) {
-          console.log(chalk.yellow('Response is not an array, checking if it contains an array property...'));
-          
-          // Handle the case where the response might be an object with an array property
-          if (complexityAnalysis.tasks || complexityAnalysis.analysis || complexityAnalysis.results) {
-            complexityAnalysis = complexityAnalysis.tasks || complexityAnalysis.analysis || complexityAnalysis.results;
-          } else {
-            // If no recognizable array property, wrap it as an array if it's an object
-            if (typeof complexityAnalysis === 'object' && complexityAnalysis !== null) {
-              console.log(chalk.yellow('Converting object to array...'));
-              complexityAnalysis = [complexityAnalysis];
-            } else {
-              throw new Error('Response does not contain a valid array or object');
-            }
-          }
-        }
-        
-        // Final check to ensure we have an array
-        if (!Array.isArray(complexityAnalysis)) {
-          throw new Error('Failed to extract an array from the response');
-        }
-        
-        // Check that we have an analysis for each task in the input file
-        const taskIds = tasksData.tasks.map(t => t.id);
-        const analysisTaskIds = complexityAnalysis.map(a => a.taskId);
-        const missingTaskIds = taskIds.filter(id => !analysisTaskIds.includes(id));
-
-        if (missingTaskIds.length > 0) {
-          console.log(chalk.yellow(`Missing analysis for ${missingTaskIds.length} tasks: ${missingTaskIds.join(', ')}`));
-          console.log(chalk.blue(`Attempting to analyze missing tasks...`));
-          
-          // Create a subset of tasksData with just the missing tasks
-          const missingTasks = {
-            meta: tasksData.meta,
-            tasks: tasksData.tasks.filter(t => missingTaskIds.includes(t.id))
-          };
-          
-          // Generate a prompt for just the missing tasks
-          const missingTasksPrompt = generateComplexityAnalysisPrompt(missingTasks);
-          
-          // Call the same AI model to analyze the missing tasks
-          let missingAnalysisResponse = '';
-          
-          try {
-            // Start a new loading indicator
-            const missingTasksLoadingIndicator = startLoadingIndicator('Analyzing missing tasks...');
-            
-            // Use the same AI model as the original analysis
-            if (useResearch) {
-              // Create the same research prompt but for missing tasks
-              const missingTasksResearchPrompt = `You are conducting a detailed analysis of software development tasks to determine their complexity and how they should be broken down into subtasks.
-
-Please research each task thoroughly, considering best practices, industry standards, and potential implementation challenges before providing your analysis.
-
-CRITICAL: You MUST respond ONLY with a valid JSON array. Do not include ANY explanatory text, markdown formatting, or code block markers.
-
-${missingTasksPrompt}
-
-Your response must be a clean JSON array only, following exactly this format:
-[
-  {
-    "taskId": 1,
-    "taskTitle": "Example Task",
-    "complexityScore": 7,
-    "recommendedSubtasks": 4,
-    "expansionPrompt": "Detailed prompt for expansion",
-    "reasoning": "Explanation of complexity assessment"
-  },
-  // more tasks...
-]
-
-DO NOT include any text before or after the JSON array. No explanations, no markdown formatting.`;
-
-              const result = await perplexity.chat.completions.create({
-                model: PERPLEXITY_MODEL,
-                messages: [
-                  {
-                    role: "system", 
-                    content: "You are a technical analysis AI that only responds with clean, valid JSON. Never include explanatory text or markdown formatting in your response."
-                  },
-                  {
-                    role: "user",
-                    content: missingTasksResearchPrompt
-                  }
-                ],
-                temperature: TEMPERATURE,
-                max_tokens: MAX_TOKENS,
-              });
-              
-              // Extract the response
-              missingAnalysisResponse = result.choices[0].message.content;
-            } else {
-              // Use Claude
-              const stream = await anthropic.messages.create({
-                max_tokens: CONFIG.maxTokens,
-                model: modelOverride || CONFIG.model,
-                temperature: CONFIG.temperature,
-                messages: [{ role: "user", content: missingTasksPrompt }],
-                system: "You are an expert software architect and project manager analyzing task complexity. Respond only with valid JSON.",
-                stream: true
-              });
-              
-              // Process the stream
-              for await (const chunk of stream) {
-                if (chunk.type === 'content_block_delta' && chunk.delta.text) {
-                  missingAnalysisResponse += chunk.delta.text;
-                }
-              }
-            }
-            
-            // Stop the loading indicator
-            stopLoadingIndicator(missingTasksLoadingIndicator);
-            
-            // Parse the response using the same parsing logic as before
-            let missingAnalysis;
-            try {
-              // Clean up the response to ensure it's valid JSON (using same logic as above)
-              let cleanedResponse = missingAnalysisResponse;
-              
-              // Use the same JSON extraction logic as before
-              // ... (code omitted for brevity, it would be the same as the original parsing)
-              
-              // First check for JSON code blocks
-              const codeBlockMatch = missingAnalysisResponse.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
-              if (codeBlockMatch) {
-                cleanedResponse = codeBlockMatch[1];
-                console.log(chalk.blue("Extracted JSON from code block for missing tasks"));
-              } else {
-                // Look for a complete JSON array pattern
-                const jsonArrayMatch = missingAnalysisResponse.match(/(\[\s*\{\s*"[^"]*"\s*:[\s\S]*\}\s*\])/);
-                if (jsonArrayMatch) {
-                  cleanedResponse = jsonArrayMatch[1];
-                  console.log(chalk.blue("Extracted JSON array pattern for missing tasks"));
-                } else {
-                  // Try to find the start of a JSON array and capture to the end
-                  const jsonStartMatch = missingAnalysisResponse.match(/(\[\s*\{[\s\S]*)/);
-                  if (jsonStartMatch) {
-                    cleanedResponse = jsonStartMatch[1];
-                    // Try to find a proper closing to the array
-                    const properEndMatch = cleanedResponse.match(/([\s\S]*\}\s*\])/);
-                    if (properEndMatch) {
-                      cleanedResponse = properEndMatch[1];
-                    }
-                    console.log(chalk.blue("Extracted JSON from start of array to end for missing tasks"));
-                  }
-                }
-              }
-              
-              // More aggressive cleaning if needed
-              const strictArrayMatch = cleanedResponse.match(/(\[\s*\{[\s\S]*\}\s*\])/);
-              if (strictArrayMatch) {
-                cleanedResponse = strictArrayMatch[1];
-                console.log(chalk.blue("Applied strict JSON array extraction for missing tasks"));
-              }
-              
-              try {
-                missingAnalysis = JSON.parse(cleanedResponse);
-              } catch (jsonError) {
-                // Try to fix common JSON issues (same as before)
-                cleanedResponse = cleanedResponse.replace(/,(\s*[\]}])/g, '$1');
-                cleanedResponse = cleanedResponse.replace(/(\s*)(\w+)(\s*):(\s*)/g, '$1"$2"$3:$4');
-                cleanedResponse = cleanedResponse.replace(/:(\s*)'([^']*)'(\s*[,}])/g, ':$1"$2"$3');
-                
-                try {
-                  missingAnalysis = JSON.parse(cleanedResponse);
-                  console.log(chalk.green("Successfully parsed JSON for missing tasks after fixing common issues"));
-                } catch (fixedJsonError) {
-                  // Try the individual task extraction as a last resort
-                  console.log(chalk.red("Failed to parse JSON for missing tasks, attempting individual extraction..."));
-                  
-                  const taskMatches = cleanedResponse.match(/\{\s*"taskId"\s*:\s*(\d+)[^}]*\}/g);
-                  if (taskMatches && taskMatches.length > 0) {
-                    console.log(chalk.yellow(`Found ${taskMatches.length} task objects, attempting to process individually`));
-                    
-                    missingAnalysis = [];
-                    for (const taskMatch of taskMatches) {
-                      try {
-                        const fixedTask = taskMatch.replace(/,\s*$/, '');
-                        const taskObj = JSON.parse(`${fixedTask}`);
-                        if (taskObj && taskObj.taskId) {
-                          missingAnalysis.push(taskObj);
-                        }
-                      } catch (taskParseError) {
-                        console.log(chalk.yellow(`Could not parse individual task: ${taskMatch.substring(0, 30)}...`));
-                      }
-                    }
-                    
-                    if (missingAnalysis.length === 0) {
-                      throw new Error("Could not parse any missing tasks");
-                    }
-                  } else {
-                    throw fixedJsonError;
-                  }
-                }
-              }
-              
-              // Ensure it's an array
-              if (!Array.isArray(missingAnalysis)) {
-                if (missingAnalysis && typeof missingAnalysis === 'object') {
-                  missingAnalysis = [missingAnalysis];
-                } else {
-                  throw new Error("Missing tasks analysis is not an array or object");
-                }
-              }
-              
-              // Add the missing analyses to the main analysis array
-              console.log(chalk.green(`Successfully analyzed ${missingAnalysis.length} missing tasks`));
-              complexityAnalysis = [...complexityAnalysis, ...missingAnalysis];
-              
-              // Re-check for missing tasks
-              const updatedAnalysisTaskIds = complexityAnalysis.map(a => a.taskId);
-              const stillMissingTaskIds = taskIds.filter(id => !updatedAnalysisTaskIds.includes(id));
-              
-              if (stillMissingTaskIds.length > 0) {
-                console.log(chalk.yellow(`Warning: Still missing analysis for ${stillMissingTaskIds.length} tasks: ${stillMissingTaskIds.join(', ')}`));
-              } else {
-                console.log(chalk.green(`All tasks now have complexity analysis!`));
-              }
-            } catch (error) {
-              console.error(chalk.red(`Error analyzing missing tasks: ${error.message}`));
-              console.log(chalk.yellow(`Continuing with partial analysis...`));
-            }
-          } catch (error) {
-            console.error(chalk.red(`Error during retry for missing tasks: ${error.message}`));
-            console.log(chalk.yellow(`Continuing with partial analysis...`));
-          }
-        }
-      } catch (error) {
-        console.error(chalk.red(`Failed to parse LLM response as JSON: ${error.message}`));
-        if (CONFIG.debug) {
-          console.debug(chalk.gray(`Raw response: ${fullResponse}`));
-        }
-        throw new Error('Invalid response format from LLM. Expected JSON.');
-      }
-      
-      // Create the final report
-      const report = {
-        meta: {
-          generatedAt: new Date().toISOString(),
-          tasksAnalyzed: tasksData.tasks.length,
-          thresholdScore: thresholdScore,
-          projectName: tasksData.meta?.projectName || 'Your Project Name',
-          usedResearch: useResearch
-        },
-        complexityAnalysis: complexityAnalysis
-      };
-      
-      // Write the report to file
-      console.log(chalk.blue(`Writing complexity report to ${outputPath}...`));
-      writeJSON(outputPath, report);
-      
-      console.log(chalk.green(`Task complexity analysis complete. Report written to ${outputPath}`));
-      
-      // Display a summary of findings
-      const highComplexity = complexityAnalysis.filter(t => t.complexityScore >= 8).length;
-      const mediumComplexity = complexityAnalysis.filter(t => t.complexityScore >= 5 && t.complexityScore < 8).length;
-      const lowComplexity = complexityAnalysis.filter(t => t.complexityScore < 5).length;
-      const totalAnalyzed = complexityAnalysis.length;
-      
-      console.log('\nComplexity Analysis Summary:');
-      console.log('----------------------------');
-      console.log(`Tasks in input file: ${tasksData.tasks.length}`);
-      console.log(`Tasks successfully analyzed: ${totalAnalyzed}`);
-      console.log(`High complexity tasks: ${highComplexity}`);
-      console.log(`Medium complexity tasks: ${mediumComplexity}`);
-      console.log(`Low complexity tasks: ${lowComplexity}`);
-      console.log(`Sum verification: ${highComplexity + mediumComplexity + lowComplexity} (should equal ${totalAnalyzed})`);
-      console.log(`Research-backed analysis: ${useResearch ? 'Yes' : 'No'}`);
-      console.log(`\nSee ${outputPath} for the full report and expansion commands.`);
-      
-    } catch (error) {
-      if (streamingInterval) clearInterval(streamingInterval);
-      stopLoadingIndicator(loadingIndicator);
-      throw error;
-    }
-  } catch (error) {
-    console.error(chalk.red(`Error analyzing task complexity: ${error.message}`));
+      if (!prompt) {
+        console.error(chalk.red('Error: --prompt parameter is required. Please provide a description of the task.'));
     process.exit(1);
-  }
+      }
+      
+      console.log(chalk.blue(`Adding new task with prompt: "${prompt}"`));
+      console.log(chalk.blue(`Tasks file: ${tasksPath}`));
+      
+      await addTask(tasksPath, prompt, dependencies, priority);
+    });
+
+  program
+    .command('next')
+    .description('Show the next task to work on based on dependencies and status')
+    .option('-f, --file <file>', 'Path to the tasks file', 'tasks/tasks.json')
+    .action(async (options) => {
+      const tasksPath = options.file;
+      await displayNextTask(tasksPath);
+    });
+
+  program
+    .command('show')
+    .description('Show details of a specific task by ID')
+    .argument('[id]', 'Task ID to show')
+    .option('-i, --id <id>', 'Task ID to show (alternative to argument)')
+    .option('-f, --file <file>', 'Path to the tasks file', 'tasks/tasks.json')
+    .action(async (id, options) => {
+      const taskId = id || options.id;
+      
+      if (!taskId) {
+        console.error(chalk.red('Error: Task ID is required. Provide it as an argument or with --id option.'));
+        console.error(chalk.yellow('Examples:'));
+        console.error(chalk.yellow('  node scripts/dev.js show 1'));
+        console.error(chalk.yellow('  node scripts/dev.js show --id=1'));
+        process.exit(1);
+      }
+      
+      const tasksPath = options.file;
+      await displayTaskById(tasksPath, taskId);
+    });
+
+  program
+    .command('add-dependency')
+    .description('Add a dependency to a task')
+    .option('-f, --file <file>', 'Path to the tasks file', 'tasks/tasks.json')
+    .option('-i, --id <id>', 'ID of the task to add dependency to')
+    .option('-d, --depends-on <id>', 'ID of the task to add as dependency')
+    .action(async (options) => {
+      const tasksPath = options.file;
+      const taskId = options.id;
+      const dependencyId = options.dependsOn;
+      
+      if (!taskId || !dependencyId) {
+        console.error(chalk.red('Error: Both --id and --depends-on parameters are required.'));
+        console.error(chalk.yellow('Example:'));
+        console.error(chalk.yellow('  node scripts/dev.js add-dependency --id=22 --depends-on=21'));
+        process.exit(1);
+      }
+      
+      await addDependency(tasksPath, taskId, dependencyId);
+    });
+
+  program
+    .command('remove-dependency')
+    .description('Remove a dependency from a task')
+    .option('-f, --file <file>', 'Path to the tasks file', 'tasks/tasks.json')
+    .option('-i, --id <id>', 'ID of the task to remove dependency from')
+    .option('-d, --depends-on <id>', 'ID of the task to remove as dependency')
+    .action(async (options) => {
+      const tasksPath = options.file;
+      const taskId = options.id;
+      const dependencyId = options.dependsOn;
+      
+      if (!taskId || !dependencyId) {
+        console.error(chalk.red('Error: Both --id and --depends-on parameters are required.'));
+        console.error(chalk.yellow('Example:'));
+        console.error(chalk.yellow('  node scripts/dev.js remove-dependency --id=22 --depends-on=21'));
+        process.exit(1);
+      }
+      
+      await removeDependency(tasksPath, taskId, dependencyId);
+    });
+
+  program
+    .command('*')
+    .description('Handle unknown commands')
+    .action(async (command) => {
+      console.error(chalk.red(`Unknown command: ${command}`));
+      displayHelp();
+      process.exit(1);
+    });
+
+  await program.parseAsync(process.argv);
 }
 
 /**
@@ -2374,6 +2397,8 @@ function findTaskInComplexityReport(report, taskId) {
 // Clear subtasks from tasks
 //
 function clearSubtasks(tasksPath, taskIds) {
+  displayBanner();
+  
   log('info', `Reading tasks from ${tasksPath}...`);
   const data = readJSON(tasksPath);
   if (!data || !data.tasks) {
@@ -2381,9 +2406,25 @@ function clearSubtasks(tasksPath, taskIds) {
     process.exit(1);
   }
 
+  console.log(boxen(
+    chalk.white.bold('Clearing Subtasks'), 
+    { padding: 1, borderColor: 'blue', borderStyle: 'round', margin: { top: 1, bottom: 1 } }
+  ));
+
   // Handle multiple task IDs (comma-separated)
   const taskIdArray = taskIds.split(',').map(id => id.trim());
   let clearedCount = 0;
+  
+  // Create a summary table for the cleared subtasks
+  const summaryTable = new Table({
+    head: [
+      chalk.cyan.bold('Task ID'), 
+      chalk.cyan.bold('Task Title'), 
+      chalk.cyan.bold('Subtasks Cleared')
+    ],
+    colWidths: [10, 50, 20],
+    style: { head: [], border: [] }
+  });
 
   taskIdArray.forEach(taskId => {
     const id = parseInt(taskId, 10);
@@ -2400,6 +2441,11 @@ function clearSubtasks(tasksPath, taskIds) {
 
     if (!task.subtasks || task.subtasks.length === 0) {
       log('info', `Task ${id} has no subtasks to clear`);
+      summaryTable.push([
+        id.toString(),
+        truncate(task.title, 47),
+        chalk.yellow('No subtasks')
+      ]);
       return;
     }
 
@@ -2407,21 +2453,865 @@ function clearSubtasks(tasksPath, taskIds) {
     task.subtasks = [];
     clearedCount++;
     log('info', `Cleared ${subtaskCount} subtasks from task ${id}`);
+    
+    summaryTable.push([
+      id.toString(),
+      truncate(task.title, 47),
+      chalk.green(`${subtaskCount} subtasks cleared`)
+    ]);
   });
 
   if (clearedCount > 0) {
     writeJSON(tasksPath, data);
-    log('info', `Successfully cleared subtasks from ${clearedCount} task(s)`);
-
+    
+    // Show summary table
+    console.log(boxen(
+      chalk.white.bold('Subtask Clearing Summary:'),
+      { padding: { left: 2, right: 2, top: 0, bottom: 0 }, margin: { top: 1, bottom: 0 }, borderColor: 'blue', borderStyle: 'round' }
+    ));
+    console.log(summaryTable.toString());
+    
     // Regenerate task files to reflect changes
     log('info', "Regenerating task files...");
     generateTaskFiles(tasksPath, path.dirname(tasksPath));
+    
+    // Success message
+    console.log(boxen(
+      chalk.green(`Successfully cleared subtasks from ${chalk.bold(clearedCount)} task(s)`),
+      { padding: 1, borderColor: 'green', borderStyle: 'round', margin: { top: 1 } }
+    ));
+    
+    // Next steps suggestion
+    console.log(boxen(
+      chalk.white.bold('Next Steps:') + '\n\n' +
+      `${chalk.cyan('1.')} Run ${chalk.yellow('node scripts/dev.js expand --id=<id>')} to generate new subtasks\n` +
+      `${chalk.cyan('2.')} Run ${chalk.yellow('node scripts/dev.js list --with-subtasks')} to verify changes`,
+      { padding: 1, borderColor: 'cyan', borderStyle: 'round', margin: { top: 1 } }
+    ));
+    
   } else {
-    log('info', "No subtasks were cleared");
+    console.log(boxen(
+      chalk.yellow('No subtasks were cleared'),
+      { padding: 1, borderColor: 'yellow', borderStyle: 'round', margin: { top: 1 } }
+    ));
   }
 }
 
+// ----------------------------------------
+// Custom help display
+// ----------------------------------------
+function displayHelp() {
+  displayBanner();
+  
+  console.log(boxen(
+    chalk.white.bold('Claude Task Master CLI'),
+    { padding: 1, borderColor: 'blue', borderStyle: 'round', margin: { top: 1, bottom: 1 } }
+  ));
+  
+  // Command categories
+  const commandCategories = [
+    {
+      title: 'Task Generation',
+      color: 'cyan',
+      commands: [
+        { name: 'parse-prd', args: '--input=<file.txt> [--tasks=10]', 
+          desc: 'Generate tasks from a PRD document' },
+        { name: 'generate', args: '', 
+          desc: 'Create individual task files from tasks.json' }
+      ]
+    },
+    {
+      title: 'Task Management',
+      color: 'green',
+      commands: [
+        { name: 'list', args: '[--status=<status>] [--with-subtasks]', 
+          desc: 'List all tasks with their status' },
+        { name: 'set-status', args: '--id=<id> --status=<status>', 
+          desc: 'Update task status (done, pending, etc.)' },
+        { name: 'update', args: '--from=<id> --prompt="<context>"', 
+          desc: 'Update tasks based on new requirements' },
+        { name: 'add-dependency', args: '--id=<id> --depends-on=<id>', 
+          desc: 'Add a dependency to a task' },
+        { name: 'remove-dependency', args: '--id=<id> --depends-on=<id>', 
+          desc: 'Remove a dependency from a task' }
+      ]
+    },
+    {
+      title: 'Task Analysis & Detail',
+      color: 'yellow',
+      commands: [
+        { name: 'analyze-complexity', args: '[--research] [--threshold=5]', 
+          desc: 'Analyze tasks and generate expansion recommendations' },
+        { name: 'expand', args: '--id=<id> [--num=5] [--research] [--prompt="<context>"]', 
+          desc: 'Break down tasks into detailed subtasks' },
+        { name: 'expand --all', args: '[--force] [--research]', 
+          desc: 'Expand all pending tasks with subtasks' },
+        { name: 'clear-subtasks', args: '--id=<id>', 
+          desc: 'Remove subtasks from specified tasks' }
+      ]
+    }
+  ];
+  
+  // Display each category
+  commandCategories.forEach(category => {
+    console.log(boxen(
+      chalk[category.color].bold(category.title),
+      { 
+        padding: { left: 2, right: 2, top: 0, bottom: 0 }, 
+        margin: { top: 1, bottom: 0 }, 
+        borderColor: category.color, 
+        borderStyle: 'round' 
+      }
+    ));
+    
+    const commandTable = new Table({
+      colWidths: [20, 40, 50],
+      chars: {
+        'top': '', 'top-mid': '', 'top-left': '', 'top-right': '',
+        'bottom': '', 'bottom-mid': '', 'bottom-left': '', 'bottom-right': '',
+        'left': '', 'left-mid': '', 'mid': '', 'mid-mid': '',
+        'right': '', 'right-mid': '', 'middle': ' '
+      },
+      style: { border: [], 'padding-left': 4 }
+    });
+    
+    category.commands.forEach(cmd => {
+      commandTable.push([
+        chalk.bold(cmd.name),
+        chalk.blue(cmd.args),
+        cmd.desc
+      ]);
+    });
+    
+    console.log(commandTable.toString());
+  });
+  
+  // Environment variables section
+  console.log(boxen(
+    chalk.magenta.bold('Environment Variables'),
+    { 
+      padding: { left: 2, right: 2, top: 0, bottom: 0 }, 
+      margin: { top: 1, bottom: 0 }, 
+      borderColor: 'magenta', 
+      borderStyle: 'round' 
+    }
+  ));
+  
+  const envTable = new Table({
+    colWidths: [25, 20, 65],
+    chars: {
+      'top': '', 'top-mid': '', 'top-left': '', 'top-right': '',
+      'bottom': '', 'bottom-mid': '', 'bottom-left': '', 'bottom-right': '',
+      'left': '', 'left-mid': '', 'mid': '', 'mid-mid': '',
+      'right': '', 'right-mid': '', 'middle': ' '
+    },
+    style: { border: [], 'padding-left': 4 }
+  });
+  
+  envTable.push(
+    [chalk.bold('ANTHROPIC_API_KEY'), chalk.red('Required'), 'Your Anthropic API key for Claude'],
+    [chalk.bold('MODEL'), chalk.gray('Optional'), `Claude model to use (default: ${MODEL})`],
+    [chalk.bold('PERPLEXITY_API_KEY'), chalk.gray('Optional'), 'API key for research-backed features'],
+    [chalk.bold('PROJECT_NAME'), chalk.gray('Optional'), `Project name in metadata (default: ${CONFIG.projectName})`]
+  );
+  
+  console.log(envTable.toString());
+  
+  // Example usage section
+  console.log(boxen(
+    chalk.white.bold('Example Workflow'),
+    { 
+      padding: 1, 
+      margin: { top: 1, bottom: 1 }, 
+      borderColor: 'white', 
+      borderStyle: 'round' 
+    }
+  ));
+  
+  console.log(chalk.cyan('  1. Generate tasks:'));
+  console.log(`     ${chalk.yellow('node scripts/dev.js parse-prd --input=prd.txt')}`);
+  console.log(chalk.cyan('  2. Generate task files:'));
+  console.log(`     ${chalk.yellow('node scripts/dev.js generate')}`);
+  console.log(chalk.cyan('  3. Analyze task complexity:'));
+  console.log(`     ${chalk.yellow('node scripts/dev.js analyze-complexity --research')}`);
+  console.log(chalk.cyan('  4. Break down complex tasks:'));
+  console.log(`     ${chalk.yellow('node scripts/dev.js expand --id=3 --research')}`);
+  console.log(chalk.cyan('  5. Track progress:'));
+  console.log(`     ${chalk.yellow('node scripts/dev.js list --with-subtasks')}`);
+  console.log(chalk.cyan('  6. Update task status:'));
+  console.log(`     ${chalk.yellow('node scripts/dev.js set-status --id=1 --status=done')}`);
+  
+  console.log('\n');
+}
+
+async function addTask(tasksPath, prompt, dependencies = [], priority = 'medium') {
+  displayBanner();
+  
+  // Read the existing tasks
+  const data = readJSON(tasksPath);
+  if (!data || !data.tasks) {
+    log('error', "Invalid or missing tasks.json.");
+    process.exit(1);
+  }
+  
+  // Find the highest task ID to determine the next ID
+  const highestId = Math.max(...data.tasks.map(t => t.id));
+  const newTaskId = highestId + 1;
+  
+  console.log(boxen(
+    chalk.white.bold(`Creating New Task #${newTaskId}`),
+    { padding: 1, borderColor: 'blue', borderStyle: 'round', margin: { top: 1, bottom: 1 } }
+  ));
+  
+  // Create the system prompt for Claude
+  const systemPrompt = "You are a helpful assistant that creates well-structured tasks for a software development project. Generate a single new task based on the user's description.";
+  
+  // Create the user prompt with context from existing tasks
+  let contextTasks = '';
+  if (dependencies.length > 0) {
+    // Provide context for the dependent tasks
+    const dependentTasks = data.tasks.filter(t => dependencies.includes(t.id));
+    contextTasks = `\nThis task depends on the following tasks:\n${dependentTasks.map(t => 
+      `- Task ${t.id}: ${t.title} - ${t.description}`).join('\n')}`;
+  } else {
+    // Provide a few recent tasks as context
+    const recentTasks = [...data.tasks].sort((a, b) => b.id - a.id).slice(0, 3);
+    contextTasks = `\nRecent tasks in the project:\n${recentTasks.map(t => 
+      `- Task ${t.id}: ${t.title} - ${t.description}`).join('\n')}`;
+  }
+  
+  const taskStructure = `
+  {
+    "title": "Task title goes here",
+    "description": "A concise one or two sentence description of what the task involves",
+    "details": "In-depth details including specifics on implementation, considerations, and anything important for the developer to know. This should be detailed enough to guide implementation.",
+    "testStrategy": "A detailed approach for verifying the task has been correctly implemented. Include specific test cases or validation methods."
+  }`;
+  
+  const userPrompt = `Create a comprehensive new task (Task #${newTaskId}) for a software development project based on this description: "${prompt}"
+  
+  ${contextTasks}
+  
+  Return your answer as a single JSON object with the following structure:
+  ${taskStructure}
+  
+  Don't include the task ID, status, dependencies, or priority as those will be added automatically.
+  Make sure the details and test strategy are thorough and specific.
+  
+  IMPORTANT: Return ONLY the JSON object, nothing else.`;
+  
+  // Start the loading indicator
+  const loadingIndicator = startLoadingIndicator('Generating new task with Claude AI...');
+  
+  let fullResponse = '';
+  let streamingInterval = null;
+
+  try {
+    // Call Claude with streaming enabled
+    const stream = await anthropic.messages.create({
+      max_tokens: CONFIG.maxTokens,
+      model: CONFIG.model,
+      temperature: CONFIG.temperature,
+      messages: [{ role: "user", content: userPrompt }],
+      system: systemPrompt,
+      stream: true
+    });
+    
+    // Update loading indicator to show streaming progress
+    let dotCount = 0;
+    streamingInterval = setInterval(() => {
+      readline.cursorTo(process.stdout, 0);
+      process.stdout.write(`Receiving streaming response from Claude${'.'.repeat(dotCount)}`);
+      dotCount = (dotCount + 1) % 4;
+    }, 500);
+    
+    // Process the stream
+    for await (const chunk of stream) {
+      if (chunk.type === 'content_block_delta' && chunk.delta.text) {
+        fullResponse += chunk.delta.text;
+      }
+    }
+    
+    if (streamingInterval) clearInterval(streamingInterval);
+    stopLoadingIndicator(loadingIndicator);
+    
+    log('info', "Completed streaming response from Claude API!");
+    log('debug', `Streaming response length: ${fullResponse.length} characters`);
+    
+    // Parse the response - handle potential JSON formatting issues
+    let taskData;
+    try {
+      // Check if the response is wrapped in a code block
+      const jsonMatch = fullResponse.match(/```(?:json)?([^`]+)```/);
+      const jsonContent = jsonMatch ? jsonMatch[1] : fullResponse;
+      
+      // Parse the JSON
+      taskData = JSON.parse(jsonContent);
+      
+      // Check that we have the required fields
+      if (!taskData.title || !taskData.description) {
+        throw new Error("Missing required fields in the generated task");
+      }
+    } catch (error) {
+      log('error', "Failed to parse Claude's response as valid task JSON:", error);
+      log('debug', "Response content:", fullResponse);
+      process.exit(1);
+    }
+    
+    // Create the new task object
+    const newTask = {
+      id: newTaskId,
+      title: taskData.title,
+      description: taskData.description,
+      status: "pending",
+      dependencies: dependencies,
+      priority: priority,
+      details: taskData.details || "",
+      testStrategy: taskData.testStrategy || "Manually verify the implementation works as expected."
+    };
+    
+    // Add the new task to the tasks array
+    data.tasks.push(newTask);
+    
+    // Write the updated tasks back to the file
+    writeJSON(tasksPath, data);
+    
+    // Show success message
+    const successBox = boxen(
+      chalk.green(`Successfully added new task #${newTaskId}:\n`) +
+      chalk.white.bold(newTask.title) + "\n\n" +
+      chalk.white(newTask.description),
+      { padding: 1, borderColor: 'green', borderStyle: 'round', margin: { top: 1 } }
+    );
+    console.log(successBox);
+    
+    // Next steps suggestion
+    console.log(boxen(
+      chalk.white.bold('Next Steps:') + '\n\n' +
+      `${chalk.cyan('1.')} Run ${chalk.yellow('node scripts/dev.js generate')} to update task files\n` +
+      `${chalk.cyan('2.')} Run ${chalk.yellow('node scripts/dev.js expand --id=' + newTaskId)} to break it down into subtasks\n` +
+      `${chalk.cyan('3.')} Run ${chalk.yellow('node scripts/dev.js list --with-subtasks')} to see all tasks`,
+      { padding: 1, borderColor: 'cyan', borderStyle: 'round', margin: { top: 1 } }
+    ));
+    
+    return newTaskId;
+  } catch (error) {
+    if (streamingInterval) clearInterval(streamingInterval);
+    stopLoadingIndicator(loadingIndicator);
+    log('error', "Error generating task:", error.message);
+    process.exit(1);
+  }
+}
+
+/**
+ * Find the next pending task based on dependencies
+ * @param {Object[]} tasks - The array of tasks
+ * @returns {Object|null} The next task to work on or null if no eligible tasks
+ */
+function findNextTask(tasks) {
+  // Get all completed task IDs
+  const completedTaskIds = new Set(
+    tasks
+      .filter(t => t.status === 'done' || t.status === 'completed')
+      .map(t => t.id)
+  );
+  
+  // Filter for pending tasks whose dependencies are all satisfied
+  const eligibleTasks = tasks.filter(task => 
+    (task.status === 'pending' || task.status === 'in-progress') && 
+    task.dependencies && // Make sure dependencies array exists
+    task.dependencies.every(depId => completedTaskIds.has(depId))
+  );
+  
+  if (eligibleTasks.length === 0) {
+    return null;
+  }
+  
+  // Sort eligible tasks by:
+  // 1. Priority (high > medium > low)
+  // 2. Dependencies count (fewer dependencies first)
+  // 3. ID (lower ID first)
+  const priorityValues = { 'high': 3, 'medium': 2, 'low': 1 };
+  
+  const nextTask = eligibleTasks.sort((a, b) => {
+    // Sort by priority first
+    const priorityA = priorityValues[a.priority || 'medium'] || 2;
+    const priorityB = priorityValues[b.priority || 'medium'] || 2;
+    
+    if (priorityB !== priorityA) {
+      return priorityB - priorityA; // Higher priority first
+    }
+    
+    // If priority is the same, sort by dependency count
+    if (a.dependencies && b.dependencies && a.dependencies.length !== b.dependencies.length) {
+      return a.dependencies.length - b.dependencies.length; // Fewer dependencies first
+    }
+    
+    // If dependency count is the same, sort by ID
+    return a.id - b.id; // Lower ID first
+  })[0]; // Return the first (highest priority) task
+  
+  return nextTask;
+}
+
+/**
+ * Display the next task to work on
+ * @param {string} tasksPath - Path to the tasks.json file
+ */
+async function displayNextTask(tasksPath) {
+  displayBanner();
+  
+  // Read the tasks file
+  const data = readJSON(tasksPath);
+  if (!data || !data.tasks) {
+    log('error', "No valid tasks found.");
+    process.exit(1);
+  }
+  
+  // Find the next task
+  const nextTask = findNextTask(data.tasks);
+  
+  if (!nextTask) {
+    console.log(boxen(
+      chalk.yellow('No eligible tasks found!\n\n') +
+      'All pending tasks have unsatisfied dependencies, or all tasks are completed.',
+      { padding: { top: 0, bottom: 0, left: 1, right: 1 }, borderColor: 'yellow', borderStyle: 'round', margin: { top: 1 } }
+    ));
+    return;
+  }
+  
+  // Display the task in a nice format
+  console.log(boxen(
+    chalk.white.bold(`Next Task: #${nextTask.id} - ${nextTask.title}`),
+    { padding: { top: 0, bottom: 0, left: 1, right: 1 }, borderColor: 'blue', borderStyle: 'round', margin: { top: 1, bottom: 0 } }
+  ));
+  
+  // Create a table with task details
+  const taskTable = new Table({
+    style: { head: [], border: [] },
+    colWidths: [15, 75] // Adjusted column widths to be more reasonable
+  });
+  
+  // Priority with color
+  const priorityColors = {
+    'high': chalk.red.bold,
+    'medium': chalk.yellow,
+    'low': chalk.gray
+  };
+  const priorityColor = priorityColors[nextTask.priority || 'medium'] || chalk.white;
+  
+  // Add task details to table
+  taskTable.push(
+    [chalk.cyan.bold('ID:'), nextTask.id.toString()],
+    [chalk.cyan.bold('Title:'), nextTask.title],
+    [chalk.cyan.bold('Priority:'), priorityColor(nextTask.priority || 'medium')],
+    [chalk.cyan.bold('Dependencies:'), formatDependenciesWithStatus(nextTask.dependencies, data.tasks, true)],
+    [chalk.cyan.bold('Description:'), nextTask.description]
+  );
+  
+  console.log(taskTable.toString());
+  
+  // If task has details, show them in a separate box
+  if (nextTask.details && nextTask.details.trim().length > 0) {
+    console.log(boxen(
+      chalk.white.bold('Implementation Details:') + '\n\n' + 
+      nextTask.details,
+      { padding: { top: 0, bottom: 0, left: 1, right: 1 }, borderColor: 'cyan', borderStyle: 'round', margin: { top: 1, bottom: 0 } }
+    ));
+  }
+  
+  // Show subtasks if they exist
+  if (nextTask.subtasks && nextTask.subtasks.length > 0) {
+    console.log(boxen(
+      chalk.white.bold('Subtasks'),
+      { padding: { top: 0, bottom: 0, left: 1, right: 1 }, margin: { top: 1, bottom: 0 }, borderColor: 'magenta', borderStyle: 'round' }
+    ));
+    
+    // Create a table for subtasks
+    const subtaskTable = new Table({
+      head: [
+        chalk.magenta.bold('ID'), 
+        chalk.magenta.bold('Status'), 
+        chalk.magenta.bold('Title')
+      ],
+      colWidths: [6, 12, 65], // Reduced column widths
+      style: { head: [], border: [] }
+    });
+    
+    // Add subtasks to table
+    nextTask.subtasks.forEach(st => {
+      const statusColor = {
+        'done': chalk.green,
+        'completed': chalk.green,
+        'pending': chalk.yellow,
+        'in-progress': chalk.blue
+      }[st.status || 'pending'] || chalk.white;
+      
+      subtaskTable.push([
+        `${nextTask.id}.${st.id}`,
+        statusColor(st.status || 'pending'),
+        st.title
+      ]);
+    });
+    
+    console.log(subtaskTable.toString());
+  } else {
+    // Suggest expanding if no subtasks
+    console.log(boxen(
+      chalk.yellow('No subtasks found. Consider breaking down this task:') + '\n' +
+      chalk.white(`Run: ${chalk.cyan(`node scripts/dev.js expand --id=${nextTask.id}`)}`),
+      { padding: { top: 0, bottom: 0, left: 1, right: 1 }, borderColor: 'yellow', borderStyle: 'round', margin: { top: 1, bottom: 0 } }
+    ));
+  }
+  
+  // Show action suggestions
+  console.log(boxen(
+    chalk.white.bold('Suggested Actions:') + '\n' +
+    `${chalk.cyan('1.')} Mark as in-progress: ${chalk.yellow(`node scripts/dev.js set-status --id=${nextTask.id} --status=in-progress`)}\n` +
+    `${chalk.cyan('2.')} Mark as done when completed: ${chalk.yellow(`node scripts/dev.js set-status --id=${nextTask.id} --status=done`)}\n` +
+    (nextTask.subtasks && nextTask.subtasks.length > 0 
+      ? `${chalk.cyan('3.')} Update subtask status: ${chalk.yellow(`node scripts/dev.js set-status --id=${nextTask.id}.1 --status=done`)}`
+      : `${chalk.cyan('3.')} Break down into subtasks: ${chalk.yellow(`node scripts/dev.js expand --id=${nextTask.id}`)}`),
+    { padding: { top: 0, bottom: 0, left: 1, right: 1 }, borderColor: 'green', borderStyle: 'round', margin: { top: 1 } }
+  ));
+}
+
+/**
+ * Find a task by its ID
+ * @param {Array} tasks - The array of tasks from tasks.json
+ * @param {string|number} taskId - The ID of the task to find (can be a subtask ID like "1.1")
+ * @returns {Object|null} - The found task or null if not found
+ */
+function findTaskById(tasks, taskId) {
+  // Convert to string for comparison
+  const idStr = String(taskId);
+  
+  // Check if it's a subtask ID (contains a dot)
+  if (idStr.includes('.')) {
+    const [parentId, subtaskId] = idStr.split('.');
+    
+    // Find the parent task
+    const parentTask = tasks.find(t => String(t.id) === parentId);
+    
+    // If parent found and has subtasks, find the specific subtask
+    if (parentTask && parentTask.subtasks && parentTask.subtasks.length > 0) {
+      const subtask = parentTask.subtasks.find(st => String(st.id) === subtaskId);
+      if (subtask) {
+        // Create a copy with parent information
+        return {
+          ...subtask,
+          parentId: parentTask.id,
+          parentTitle: parentTask.title
+        };
+      }
+    }
+    return null;
+  }
+  
+  // Regular task ID
+  return tasks.find(t => String(t.id) === idStr) || null;
+}
+
+/**
+ * Display a specific task by ID
+ * @param {string} tasksPath - Path to the tasks.json file
+ * @param {string|number} taskId - The ID of the task to display
+ */
+async function displayTaskById(tasksPath, taskId) {
+  displayBanner();
+  
+  // Read the tasks file
+  const data = readJSON(tasksPath);
+  if (!data || !data.tasks) {
+    log('error', "No valid tasks found.");
+    process.exit(1);
+  }
+  
+  // Find the task by ID
+  const task = findTaskById(data.tasks, taskId);
+  
+  if (!task) {
+    console.log(boxen(
+      chalk.yellow(`Task with ID ${taskId} not found!`),
+      { padding: { top: 0, bottom: 0, left: 1, right: 1 }, borderColor: 'yellow', borderStyle: 'round', margin: { top: 1 } }
+    ));
+    return;
+  }
+  
+  // Handle subtask display specially
+  if (task.parentId !== undefined) {
+    console.log(boxen(
+      chalk.white.bold(`Subtask: #${task.parentId}.${task.id} - ${task.title}`),
+      { padding: { top: 0, bottom: 0, left: 1, right: 1 }, borderColor: 'magenta', borderStyle: 'round', margin: { top: 1, bottom: 0 } }
+    ));
+    
+    // Create a table with subtask details
+    const taskTable = new Table({
+      style: { head: [], border: [] },
+      colWidths: [15, 75]
+    });
+    
+    // Add subtask details to table
+    taskTable.push(
+      [chalk.cyan.bold('ID:'), `${task.parentId}.${task.id}`],
+      [chalk.cyan.bold('Parent Task:'), `#${task.parentId} - ${task.parentTitle}`],
+      [chalk.cyan.bold('Title:'), task.title],
+      [chalk.cyan.bold('Status:'), getStatusWithColor(task.status || 'pending')],
+      [chalk.cyan.bold('Description:'), task.description || 'No description provided.']
+    );
+    
+    console.log(taskTable.toString());
+    
+    // Show action suggestions for subtask
+    console.log(boxen(
+      chalk.white.bold('Suggested Actions:') + '\n' +
+      `${chalk.cyan('1.')} Mark as in-progress: ${chalk.yellow(`node scripts/dev.js set-status --id=${task.parentId}.${task.id} --status=in-progress`)}\n` +
+      `${chalk.cyan('2.')} Mark as done when completed: ${chalk.yellow(`node scripts/dev.js set-status --id=${task.parentId}.${task.id} --status=done`)}\n` +
+      `${chalk.cyan('3.')} View parent task: ${chalk.yellow(`node scripts/dev.js show --id=${task.parentId}`)}`,
+      { padding: { top: 0, bottom: 0, left: 1, right: 1 }, borderColor: 'green', borderStyle: 'round', margin: { top: 1 } }
+    ));
+    
+    return;
+  }
+  
+  // Display a regular task
+  console.log(boxen(
+    chalk.white.bold(`Task: #${task.id} - ${task.title}`),
+    { padding: { top: 0, bottom: 0, left: 1, right: 1 }, borderColor: 'blue', borderStyle: 'round', margin: { top: 1, bottom: 0 } }
+  ));
+  
+  // Create a table with task details
+  const taskTable = new Table({
+    style: { head: [], border: [] },
+    colWidths: [15, 75]
+  });
+  
+  // Priority with color
+  const priorityColors = {
+    'high': chalk.red.bold,
+    'medium': chalk.yellow,
+    'low': chalk.gray
+  };
+  const priorityColor = priorityColors[task.priority || 'medium'] || chalk.white;
+  
+  // Add task details to table
+  taskTable.push(
+    [chalk.cyan.bold('ID:'), task.id.toString()],
+    [chalk.cyan.bold('Title:'), task.title],
+    [chalk.cyan.bold('Status:'), getStatusWithColor(task.status || 'pending')],
+    [chalk.cyan.bold('Priority:'), priorityColor(task.priority || 'medium')],
+    [chalk.cyan.bold('Dependencies:'), formatDependenciesWithStatus(task.dependencies, data.tasks, true)],
+    [chalk.cyan.bold('Description:'), task.description]
+  );
+  
+  console.log(taskTable.toString());
+  
+  // If task has details, show them in a separate box
+  if (task.details && task.details.trim().length > 0) {
+    console.log(boxen(
+      chalk.white.bold('Implementation Details:') + '\n\n' + 
+      task.details,
+      { padding: { top: 0, bottom: 0, left: 1, right: 1 }, borderColor: 'cyan', borderStyle: 'round', margin: { top: 1, bottom: 0 } }
+    ));
+  }
+  
+  // Show test strategy if available
+  if (task.testStrategy && task.testStrategy.trim().length > 0) {
+    console.log(boxen(
+      chalk.white.bold('Test Strategy:') + '\n\n' + 
+      task.testStrategy,
+      { padding: { top: 0, bottom: 0, left: 1, right: 1 }, borderColor: 'cyan', borderStyle: 'round', margin: { top: 1, bottom: 0 } }
+    ));
+  }
+  
+  // Show subtasks if they exist
+  if (task.subtasks && task.subtasks.length > 0) {
+    console.log(boxen(
+      chalk.white.bold('Subtasks'),
+      { padding: { top: 0, bottom: 0, left: 1, right: 1 }, margin: { top: 1, bottom: 0 }, borderColor: 'magenta', borderStyle: 'round' }
+    ));
+    
+    // Create a table for subtasks
+    const subtaskTable = new Table({
+      head: [
+        chalk.magenta.bold('ID'), 
+        chalk.magenta.bold('Status'), 
+        chalk.magenta.bold('Title')
+      ],
+      colWidths: [6, 12, 65],
+      style: { head: [], border: [] }
+    });
+    
+    // Add subtasks to table
+    task.subtasks.forEach(st => {
+      const statusColor = {
+        'done': chalk.green,
+        'completed': chalk.green,
+        'pending': chalk.yellow,
+        'in-progress': chalk.blue
+      }[st.status || 'pending'] || chalk.white;
+      
+      subtaskTable.push([
+        `${task.id}.${st.id}`,
+        statusColor(st.status || 'pending'),
+        st.title
+      ]);
+    });
+    
+    console.log(subtaskTable.toString());
+  } else {
+    // Suggest expanding if no subtasks
+    console.log(boxen(
+      chalk.yellow('No subtasks found. Consider breaking down this task:') + '\n' +
+      chalk.white(`Run: ${chalk.cyan(`node scripts/dev.js expand --id=${task.id}`)}`),
+      { padding: { top: 0, bottom: 0, left: 1, right: 1 }, borderColor: 'yellow', borderStyle: 'round', margin: { top: 1, bottom: 0 } }
+    ));
+  }
+  
+  // Show action suggestions
+  console.log(boxen(
+    chalk.white.bold('Suggested Actions:') + '\n' +
+    `${chalk.cyan('1.')} Mark as in-progress: ${chalk.yellow(`node scripts/dev.js set-status --id=${task.id} --status=in-progress`)}\n` +
+    `${chalk.cyan('2.')} Mark as done when completed: ${chalk.yellow(`node scripts/dev.js set-status --id=${task.id} --status=done`)}\n` +
+    (task.subtasks && task.subtasks.length > 0 
+      ? `${chalk.cyan('3.')} Update subtask status: ${chalk.yellow(`node scripts/dev.js set-status --id=${task.id}.1 --status=done`)}`
+      : `${chalk.cyan('3.')} Break down into subtasks: ${chalk.yellow(`node scripts/dev.js expand --id=${task.id}`)}`),
+    { padding: { top: 0, bottom: 0, left: 1, right: 1 }, borderColor: 'green', borderStyle: 'round', margin: { top: 1 } }
+  ));
+}
+
+/**
+ * Add a dependency to a task
+ * @param {string} tasksPath - Path to the tasks.json file
+ * @param {number|string} taskId - ID of the task to add dependency to
+ * @param {number|string} dependencyId - ID of the task to add as dependency
+ */
+async function addDependency(tasksPath, taskId, dependencyId) {
+  // Convert IDs to numbers for consistent comparison
+  const taskIdNum = parseInt(taskId, 10);
+  const dependencyIdNum = parseInt(dependencyId, 10);
+  
+  // Read tasks file
+  const data = readJSON(tasksPath);
+  if (!data || !data.tasks) {
+    log('error', "No valid tasks found.");
+    process.exit(1);
+  }
+  
+  // Find the task to modify
+  const taskToModify = data.tasks.find(t => t.id === taskIdNum);
+  if (!taskToModify) {
+    log('error', `Task with ID ${taskIdNum} was not found.`);
+    process.exit(1);
+  }
+  
+  // Find the dependency task to ensure it exists
+  const dependencyTask = data.tasks.find(t => t.id === dependencyIdNum);
+  if (!dependencyTask) {
+    log('error', `Dependency task with ID ${dependencyIdNum} was not found.`);
+    process.exit(1);
+  }
+  
+  // Prevent circular dependencies
+  if (taskIdNum === dependencyIdNum) {
+    log('error', "A task cannot depend on itself.");
+    process.exit(1);
+  }
+  
+  // Initialize dependencies array if it doesn't exist
+  if (!taskToModify.dependencies) {
+    taskToModify.dependencies = [];
+  }
+  
+  // Check if dependency already exists
+  if (taskToModify.dependencies.includes(dependencyIdNum)) {
+    log('info', `Task #${taskIdNum} already depends on task #${dependencyIdNum}, no changes made.`);
+    return;
+  }
+  
+  // Add the dependency
+  taskToModify.dependencies.push(dependencyIdNum);
+  
+  // Sort dependencies for clarity
+  taskToModify.dependencies.sort((a, b) => a - b);
+  
+  // Save the updated tasks
+  writeJSON(tasksPath, data);
+  
+  // Success message
+  log('success', `Added dependency: Task #${taskIdNum} now depends on task #${dependencyIdNum}`);
+  
+  // Display a more visually appealing success message
+  console.log(boxen(
+    chalk.green(`Successfully added dependency:\n\n`) +
+    `Task ${chalk.bold(`#${taskIdNum}`)} now depends on task ${chalk.bold(`#${dependencyIdNum}`)}`,
+    { padding: 1, borderColor: 'green', borderStyle: 'round', margin: { top: 1 } }
+  ));
+  
+  // Regenerate task files
+  await generateTaskFiles(tasksPath, 'tasks');
+}
+
+/**
+ * Remove a dependency from a task
+ * @param {string} tasksPath - Path to the tasks.json file
+ * @param {number|string} taskId - ID of the task to remove dependency from
+ * @param {number|string} dependencyId - ID of the task to remove as dependency
+ */
+async function removeDependency(tasksPath, taskId, dependencyId) {
+  // Convert IDs to numbers for consistent comparison
+  const taskIdNum = parseInt(taskId, 10);
+  const dependencyIdNum = parseInt(dependencyId, 10);
+  
+  // Read tasks file
+  const data = readJSON(tasksPath);
+  if (!data || !data.tasks) {
+    log('error', "No valid tasks found.");
+    process.exit(1);
+  }
+  
+  // Find the task to modify
+  const taskToModify = data.tasks.find(t => t.id === taskIdNum);
+  if (!taskToModify) {
+    log('error', `Task with ID ${taskIdNum} was not found.`);
+    process.exit(1);
+  }
+  
+  // Check if the task has any dependencies
+  if (!taskToModify.dependencies || taskToModify.dependencies.length === 0) {
+    log('info', `Task #${taskIdNum} has no dependencies, nothing to remove.`);
+    return;
+  }
+  
+  // Check if the dependency exists
+  if (!taskToModify.dependencies.includes(dependencyIdNum)) {
+    log('info', `Task #${taskIdNum} does not depend on task #${dependencyIdNum}, no changes made.`);
+    return;
+  }
+  
+  // Remove the dependency
+  taskToModify.dependencies = taskToModify.dependencies.filter(depId => depId !== dependencyIdNum);
+  
+  // Save the updated tasks
+  writeJSON(tasksPath, data);
+  
+  // Success message
+  log('success', `Removed dependency: Task #${taskIdNum} no longer depends on task #${dependencyIdNum}`);
+  
+  // Display a more visually appealing success message
+  console.log(boxen(
+    chalk.green(`Successfully removed dependency:\n\n`) +
+    `Task ${chalk.bold(`#${taskIdNum}`)} no longer depends on task ${chalk.bold(`#${dependencyIdNum}`)}`,
+    { padding: 1, borderColor: 'green', borderStyle: 'round', margin: { top: 1 } }
+  ));
+  
+  // Regenerate task files
+  await generateTaskFiles(tasksPath, 'tasks');
+}
+
+
+// At the very end of the file
 main().catch(err => {
-  log('error', err);
+  console.error('ERROR in main:', err);
   process.exit(1);
 });

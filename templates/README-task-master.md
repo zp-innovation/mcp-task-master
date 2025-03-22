@@ -312,6 +312,15 @@ npm run dev -- clear-subtasks --id=1,2,3
 npm run dev -- clear-subtasks --all
 ```
 
+### Managing Task Dependencies
+```bash
+# Add a dependency to a task
+npm run dev -- add-dependency --id=<id> --depends-on=<id>
+
+# Remove a dependency from a task
+npm run dev -- remove-dependency --id=<id> --depends-on=<id>
+```
+
 ## Task Structure
 
 Tasks in tasks.json have the following structure:
@@ -325,6 +334,8 @@ Tasks in tasks.json have the following structure:
 - `details`: In-depth instructions for implementing the task
 - `testStrategy`: Approach for verifying the task has been completed correctly
 - `subtasks`: List of smaller, more specific tasks that make up the main task
+
+Dependencies are displayed with status indicators (✅ for completed, ⏱️ for pending) throughout the system, making it easy to see which prerequisite tasks are done and which still need work.
 
 ## Best Practices for AI-Driven Development
 
@@ -455,3 +466,177 @@ npm run dev -- expand --all
 ```
 
 This integration ensures that task expansion is informed by thorough complexity analysis, resulting in better subtask organization and more efficient development.
+
+### Finding the Next Task
+
+To find the next task to work on based on dependencies and status:
+
+```bash
+npm run dev -- next
+```
+
+This command:
+- Identifies tasks that are pending/in-progress and have all dependencies satisfied
+- Prioritizes tasks by priority level, dependency count, and task ID
+- Displays comprehensive information about the selected task:
+  - Basic task details (ID, title, priority, dependencies)
+  - Implementation details
+  - Subtasks (if they exist)
+- Provides contextual suggested actions:
+  - Command to mark the task as in-progress
+  - Command to mark the task as done
+  - Commands for working with subtasks
+
+Example Cursor AI interaction:
+```
+What's the next task I should work on?
+```
+
+### Viewing Specific Task Details
+
+To view detailed information about a specific task:
+
+```bash
+npm run dev -- show 1
+```
+or
+```bash
+npm run dev -- show --id=1.2
+```
+
+This command:
+- Displays comprehensive details about a specific task or subtask
+- Shows task status, priority, dependencies, and detailed implementation notes
+- For parent tasks, displays all subtasks and their status
+- For subtasks, shows parent task relationship
+- Provides contextual action suggestions based on the task's state
+- Works with both regular tasks and subtasks (using the format taskId.subtaskId)
+
+Example Cursor AI interaction:
+```
+Show me the details for task 3
+```
+or
+```
+Tell me more about subtask 2.1
+```
+
+## Task Structure
+
+Tasks in tasks.json have the following structure:
+
+- `id`: Unique identifier for the task
+- `title`: Brief, descriptive title of the task
+- `description`: Concise description of what the task involves
+- `status`: Current state of the task (pending, done, deferred)
+- `dependencies`: IDs of tasks that must be completed before this task
+- `priority`: Importance level of the task (high, medium, low)
+- `details`: In-depth instructions for implementing the task
+- `testStrategy`: Approach for verifying the task has been completed correctly
+- `subtasks`: List of smaller, more specific tasks that make up the main task
+
+Dependencies are displayed with status indicators (✅ for completed, ⏱️ for pending) throughout the system, making it easy to see which prerequisite tasks are done and which still need work.
+
+## Best Practices for AI-Driven Development
+
+1. **Start with a detailed PRD**: The more detailed your PRD, the better the generated tasks will be.
+
+2. **Review generated tasks**: After parsing the PRD, review the tasks to ensure they make sense and have appropriate dependencies.
+
+3. **Follow the dependency chain**: Always respect task dependencies - the Cursor agent will help with this.
+
+4. **Update as you go**: If your implementation diverges from the plan, use the update command to keep future tasks aligned with your current approach.
+
+5. **Break down complex tasks**: Use the expand command to break down complex tasks into manageable subtasks.
+
+6. **Regenerate task files**: After any updates to tasks.json, regenerate the task files to keep them in sync.
+
+7. **Communicate context to the agent**: When asking the Cursor agent to help with a task, provide context about what you're trying to achieve.
+
+## Example Cursor AI Interactions
+
+### Starting a new project
+```
+I've just initialized a new project with Claude Task Master. I have a PRD at scripts/prd.txt. 
+Can you help me parse it and set up the initial tasks?
+```
+
+### Working on tasks
+```
+What's the next task I should work on? Please consider dependencies and priorities.
+```
+
+### Implementing a specific task
+```
+I'd like to implement task 4. Can you help me understand what needs to be done and how to approach it?
+```
+
+### Managing subtasks
+```
+I need to regenerate the subtasks for task 3 with a different approach. Can you help me clear and regenerate them?
+```
+
+### Handling changes
+```
+We've decided to use MongoDB instead of PostgreSQL. Can you update all future tasks to reflect this change?
+```
+
+### Completing work
+```
+I've finished implementing the authentication system described in task 2. All tests are passing. 
+Please mark it as complete and tell me what I should work on next.
+```
+
+## Documentation
+
+For more detailed documentation on the scripts and command-line options, see the [scripts/README.md](scripts/README.md) file in your initialized project.
+
+## License
+
+MIT 
+
+### Analyzing Task Complexity
+
+To analyze the complexity of tasks and automatically generate expansion recommendations:
+
+```bash
+npm run dev -- analyze-complexity
+```
+
+This command:
+- Analyzes each task using AI to assess its complexity
+- Recommends optimal number of subtasks based on configured DEFAULT_SUBTASKS
+- Generates tailored prompts for expanding each task
+- Creates a comprehensive JSON report with ready-to-use commands
+- Saves the report to scripts/task-complexity-report.json by default
+
+Options:
+```bash
+# Save report to a custom location
+npm run dev -- analyze-complexity --output=my-report.json
+
+# Use a specific LLM model
+npm run dev -- analyze-complexity --model=claude-3-opus-20240229
+
+# Set a custom complexity threshold (1-10)
+npm run dev -- analyze-complexity --threshold=6
+
+# Use an alternative tasks file
+npm run dev -- analyze-complexity --file=custom-tasks.json
+
+# Use Perplexity AI for research-backed complexity analysis
+npm run dev -- analyze-complexity --research
+```
+
+The generated report contains:
+- Complexity analysis for each task (scored 1-10)
+- Recommended number of subtasks based on complexity
+- AI-generated expansion prompts customized for each task
+- Ready-to-run expansion commands directly within each task analysis
+
+### Smart Task Expansion
+
+The `expand` command now automatically checks for and uses the complexity report:
+
+```bash
+# Expand a task, using complexity report recommendations if available
