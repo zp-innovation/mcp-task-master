@@ -282,12 +282,15 @@ function createProjectStructure(projectName, projectDescription, projectVersion,
   log('info', `${COLORS.green}${COLORS.bright}Project initialized successfully!${COLORS.reset}`);
   log('info', '');
   log('info', 'Next steps:');
-  log('info', '1. Create a .env file with your ANTHROPIC_API_KEY (see .env.example)');
-  log('info', '2. Add your PRD.txt to the /scripts directory');
+  log('info', '1. Rename .env.example to .env and add your ANTHROPIC_API_KEY and PERPLEXITY_API_KEY');
+  log('info', '2. Discuss your idea with AI, and once ready ask for a PRD, and save it as PRD.txt in the /scripts directory');
   log('info', '3. Ask Cursor Agent to parse your PRD.txt and generate tasks');
   log('info', '└── You can also manually run `npm run parse-prd -- --input=<your-prd-file.txt>` to generate tasks');
-  log('info', '4. Review the README.md file to learn how to use other commands via Cursor Agent.');
-  log('info', '');
+  log('info', '4. Ask Cursor to analyze the complexity of your tasks, which will generate a task-complexity-report.json file in /scripts for your review.');
+  log('info', '5. Ask Cursor which task is next and it will determine what to start with based on task statuses and dependencies.');
+  log('info', '6. Ask Cursor to expand any tasks that are too large in scope or complexity. The complexity report will be used to generate subtasks if it exists.');
+  log('info', '7. Ship it!');
+  log('info', '* Review the README.md file to learn how to use other commands via Cursor Agent.');
 }
 
 // Run the initialization if this script is executed directly
