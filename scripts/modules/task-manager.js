@@ -243,38 +243,65 @@ Return only the updated tasks as a valid JSON array.`
         const jsonText = responseText.substring(jsonStart, jsonEnd + 1);
         updatedTasks = JSON.parse(jsonText);
       } else {
-        // Call Claude to update the tasks
-        const message = await anthropic.messages.create({
-          model: CONFIG.model,
-          max_tokens: CONFIG.maxTokens,
-          temperature: CONFIG.temperature,
-          system: systemPrompt,
-          messages: [
-            {
-              role: 'user',
-              content: `Here are the tasks to update:
+        // Call Claude to update the tasks with streaming enabled
+        let responseText = '';
+        let streamingInterval = null;
+        
+        try {
+          // Update loading indicator to show streaming progress
+          let dotCount = 0;
+          const readline = await import('readline');
+          streamingInterval = setInterval(() => {
+            readline.cursorTo(process.stdout, 0);
+            process.stdout.write(`Receiving streaming response from Claude${'.'.repeat(dotCount)}`);
+            dotCount = (dotCount + 1) % 4;
+          }, 500);
+          
+          // Use streaming API call
+          const stream = await anthropic.messages.create({
+            model: CONFIG.model,
+            max_tokens: CONFIG.maxTokens,
+            temperature: CONFIG.temperature,
+            system: systemPrompt,
+            messages: [
+              {
+                role: 'user',
+                content: `Here are the tasks to update:
 ${taskData}
 
 Please update these tasks based on the following new context:
 ${prompt}
 
 Return only the updated tasks as a valid JSON array.`
+              }
+            ],
+            stream: true
+          });
+          
+          // Process the stream
+          for await (const chunk of stream) {
+            if (chunk.type === 'content_block_delta' && chunk.delta.text) {
+              responseText += chunk.delta.text;
             }
-          ]
-        });
-        
-        const responseText = message.content[0].text;
-        
-        // Extract JSON from response
-        const jsonStart = responseText.indexOf('[');
-        const jsonEnd = responseText.lastIndexOf(']');
-        
-        if (jsonStart === -1 || jsonEnd === -1) {
-          throw new Error("Could not find valid JSON array in Claude's response");
+          }
+          
+          if (streamingInterval) clearInterval(streamingInterval);
+          log('info', "Completed streaming response from Claude API!");
+          
+          // Extract JSON from response
+          const jsonStart = responseText.indexOf('[');
+          const jsonEnd = responseText.lastIndexOf(']');
+          
+          if (jsonStart === -1 || jsonEnd === -1) {
+            throw new Error("Could not find valid JSON array in Claude's response");
+          }
+          
+          const jsonText = responseText.substring(jsonStart, jsonEnd + 1);
+          updatedTasks = JSON.parse(jsonText);
+        } catch (error) {
+          if (streamingInterval) clearInterval(streamingInterval);
+          throw error;
         }
-        
-        const jsonText = responseText.substring(jsonStart, jsonEnd + 1);
-        updatedTasks = JSON.parse(jsonText);
       }
       
       // Replace the tasks in the original data
