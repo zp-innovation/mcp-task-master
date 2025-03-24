@@ -950,37 +950,46 @@ async function displayComplexityReport(reportPath) {
     { padding: 1, borderColor: 'cyan', borderStyle: 'round', margin: { top: 1, bottom: 1 } }
   ));
   
-  // Create table for tasks that need expansion
-  if (tasksNeedingExpansion.length > 0) {
-    console.log(boxen(
-      chalk.yellow.bold(`Tasks Recommended for Expansion (${tasksNeedingExpansion.length})`),
-      { padding: { left: 2, right: 2, top: 0, bottom: 0 }, margin: { top: 1, bottom: 0 }, borderColor: 'yellow', borderStyle: 'round' }
-    ));
+  // Get terminal width
+  const terminalWidth = process.stdout.columns || 100; // Default to 100 if can't detect
+
+  // Calculate dynamic column widths
+  const idWidth = 5;
+  const titleWidth = Math.floor(terminalWidth * 0.25); // 25% of width
+  const scoreWidth = 8;
+  const subtasksWidth = 8;
+  // Command column gets the remaining space (minus some buffer for borders)
+  const commandWidth = terminalWidth - idWidth - titleWidth - scoreWidth - subtasksWidth - 10;
+
+  // Create table with new column widths and word wrapping
+  const complexTable = new Table({
+    head: [
+      chalk.yellow.bold('ID'), 
+      chalk.yellow.bold('Title'), 
+      chalk.yellow.bold('Score'),
+      chalk.yellow.bold('Subtasks'),
+      chalk.yellow.bold('Expansion Command')
+    ],
+    colWidths: [idWidth, titleWidth, scoreWidth, subtasksWidth, commandWidth],
+    style: { head: [], border: [] },
+    wordWrap: true,
+    wrapOnWordBoundary: true
+  });
+
+  // When adding rows, don't truncate the expansion command
+  tasksNeedingExpansion.forEach(task => {
+    const expansionCommand = `task-master expand --id=${task.taskId} --num=${task.recommendedSubtasks}${task.expansionPrompt ? ` --prompt="${task.expansionPrompt}"` : ''}`;
     
-    const complexTable = new Table({
-      head: [
-        chalk.yellow.bold('ID'), 
-        chalk.yellow.bold('Title'), 
-        chalk.yellow.bold('Score'),
-        chalk.yellow.bold('Subtasks'),
-        chalk.yellow.bold('Expansion Command')
-      ],
-      colWidths: [5, 40, 8, 10, 45],
-      style: { head: [], border: [] }
-    });
-    
-    tasksNeedingExpansion.forEach(task => {
-      complexTable.push([
-        task.taskId,
-        truncate(task.taskTitle, 37),
-        getComplexityWithColor(task.complexityScore),
-        task.recommendedSubtasks,
-        chalk.cyan(`task-master expand --id=${task.taskId} --num=${task.recommendedSubtasks}`)
-      ]);
-    });
-    
-    console.log(complexTable.toString());
-  }
+    complexTable.push([
+      task.taskId,
+      truncate(task.taskTitle, titleWidth - 3), // Still truncate title for readability
+      getComplexityWithColor(task.complexityScore),
+      task.recommendedSubtasks,
+      chalk.cyan(expansionCommand) // Don't truncate - allow wrapping
+    ]);
+  });
+  
+  console.log(complexTable.toString());
   
   // Create table for simple tasks
   if (simpleTasks.length > 0) {
