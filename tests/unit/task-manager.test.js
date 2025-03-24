@@ -150,4 +150,36 @@ describe('Task Manager Module', () => {
       expect(nextTask).toBeNull();
     });
   });
+
+  // Skipped tests for analyzeTaskComplexity
+  describe.skip('analyzeTaskComplexity function', () => {
+    // These tests are skipped because they require complex mocking
+    // but document what should be tested
+    
+    test('should handle valid JSON response from LLM', async () => {
+      // This test would verify that:
+      // 1. The function properly calls the AI model
+      // 2. It correctly parses a valid JSON response
+      // 3. It generates a properly formatted complexity report
+      // 4. The report includes all analyzed tasks with their complexity scores
+      expect(true).toBe(true);
+    });
+    
+    test('should handle and fix malformed JSON with unterminated strings', async () => {
+      // This test would verify that:
+      // 1. The function can handle JSON with unterminated strings
+      // 2. It applies regex fixes to repair the malformed JSON
+      // 3. It still produces a valid report despite receiving bad JSON
+      expect(true).toBe(true);
+    });
+    
+    test('should handle missing tasks in the response', async () => {
+      // This test would verify that:
+      // 1. When the AI response is missing some tasks
+      // 2. The function detects the missing tasks
+      // 3. It attempts to analyze just those missing tasks
+      // 4. The final report includes all tasks that could be analyzed
+      expect(true).toBe(true);
+    });
+  });
 }); 

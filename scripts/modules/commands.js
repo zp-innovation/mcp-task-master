@@ -52,10 +52,27 @@ function registerCommands(programInstance) {
   programInstance
     .command('parse-prd')
     .description('Parse a PRD file and generate tasks')
-    .argument('<file>', 'Path to the PRD file')
+    .argument('[file]', 'Path to the PRD file')
     .option('-o, --output <file>', 'Output file path', 'tasks/tasks.json')
     .option('-n, --num-tasks <number>', 'Number of tasks to generate', '10')
     .action(async (file, options) => {
+      if (!file) {
+        console.log(chalk.yellow('No PRD file specified.'));
+        console.log(boxen(
+          chalk.white.bold('Parse PRD Help') + '\n\n' +
+          chalk.cyan('Usage:') + '\n' +
+          `  task-master parse-prd <prd-file.txt> [options]\n\n` +
+          chalk.cyan('Options:') + '\n' +
+          '  -o, --output <file>       Output file path (default: "tasks/tasks.json")\n' +
+          '  -n, --num-tasks <number>  Number of tasks to generate (default: 10)\n\n' +
+          chalk.cyan('Example:') + '\n' +
+          '  task-master parse-prd requirements.txt --num-tasks 15\n\n' +
+          chalk.yellow('Note: This command will generate tasks from a PRD document and will overwrite any existing tasks.json file.'),
+          { padding: 1, borderColor: 'blue', borderStyle: 'round' }
+        ));
+        return;
+      }
+      
       const numTasks = parseInt(options.numTasks, 10);
       const outputPath = options.output;
       

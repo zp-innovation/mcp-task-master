@@ -1414,7 +1414,7 @@
       "description": "Extend Task Master to function as an MCP server, allowing it to provide context management services to other applications following the Model Context Protocol specification.",
       "status": "pending",
       "dependencies": [
-        "22"
+        22
       ],
       "priority": "medium",
       "details": "This task involves implementing the Model Context Protocol server capabilities within Task Master. The implementation should:\n\n1. Create a new module `mcp-server.js` that implements the core MCP server functionality\n2. Implement the required MCP endpoints:\n   - `/context` - For retrieving and updating context\n   - `/models` - For listing available models\n   - `/execute` - For executing operations with context\n3. Develop a context management system that can:\n   - Store and retrieve context data efficiently\n   - Handle context windowing and truncation when limits are reached\n   - Support context metadata and tagging\n4. Add authentication and authorization mechanisms for MCP clients\n5. Implement proper error handling and response formatting according to MCP specifications\n6. Create configuration options in Task Master to enable/disable the MCP server functionality\n7. Add documentation for how to use Task Master as an MCP server\n8. Ensure the implementation is compatible with existing MCP clients\n9. Optimize for performance, especially for context retrieval operations\n10. Add logging for MCP server operations\n\nThe implementation should follow RESTful API design principles and should be able to handle concurrent requests from multiple clients.",
@@ -1426,7 +1426,7 @@
       "description": "Create a new 'generate-test' command that leverages AI to automatically produce Jest test files for tasks based on their descriptions and subtasks.",
       "status": "pending",
       "dependencies": [
-        "22"
+        22
       ],
       "priority": "high",
       "details": "Implement a new command in the Task Master CLI that generates comprehensive Jest test files for tasks. The command should be callable as 'task-master generate-test --id=1' and should:\n\n1. Accept a task ID parameter to identify which task to generate tests for\n2. Retrieve the task and its subtasks from the task store\n3. Analyze the task description, details, and subtasks to understand implementation requirements\n4. Construct an appropriate prompt for an AI service (e.g., OpenAI API) that requests generation of Jest tests\n5. Process the AI response to create a well-formatted test file named 'task_XXX.test.js' where XXX is the zero-padded task ID\n6. Include appropriate test cases that cover the main functionality described in the task\n7. Generate mocks for external dependencies identified in the task description\n8. Create assertions that validate the expected behavior\n9. Handle both parent tasks and subtasks appropriately (for subtasks, name the file 'task_XXX_YYY.test.js' where YYY is the subtask ID)\n10. Include error handling for API failures, invalid task IDs, etc.\n11. Add appropriate documentation for the command in the help system\n\nThe implementation should utilize the existing AI service integration in the codebase and maintain consistency with the current command structure and error handling patterns.",
