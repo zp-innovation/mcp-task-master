@@ -379,7 +379,17 @@ function generateTaskFiles(tasksPath, outputDir) {
                 // Handle numeric dependencies to other subtasks
                 const foundSubtask = task.subtasks.find(st => st.id === depId);
                 if (foundSubtask) {
-                  return `${depId} (${foundSubtask.status || 'pending'})`;
+                  const isDone = foundSubtask.status === 'done' || foundSubtask.status === 'completed';
+                  const isInProgress = foundSubtask.status === 'in-progress';
+                  
+                  // Use consistent color formatting instead of emojis
+                  if (isDone) {
+                    return chalk.green.bold(`${task.id}.${depId}`);
+                  } else if (isInProgress) {
+                    return chalk.hex('#FFA500').bold(`${task.id}.${depId}`);
+                  } else {
+                    return chalk.red.bold(`${task.id}.${depId}`);
+                  }
                 }
               }
               return depId.toString();
@@ -675,8 +685,20 @@ function listTasks(tasksPath, statusFilter, withSubtasks = false) {
       `Priority: ${chalk.white(nextTask.priority || 'medium')}  Dependencies: ${formatDependenciesWithStatus(nextTask.dependencies, data.tasks, true)}` : 
       chalk.yellow('No eligible tasks found. All tasks are either completed or have unsatisfied dependencies.');
     
-    // Get terminal width
-    const terminalWidth = process.stdout.columns || 80;
+    // Get terminal width - more reliable method
+    let terminalWidth;
+    try {
+      // Try to get the actual terminal columns
+      terminalWidth = process.stdout.columns;
+    } catch (e) {
+      // Fallback if columns cannot be determined
+      log('debug', 'Could not determine terminal width, using default');
+    }
+    // Ensure we have a reasonable default if detection fails
+    terminalWidth = terminalWidth || 80;
+    
+    // Ensure terminal width is at least a minimum value to prevent layout issues
+    terminalWidth = Math.max(terminalWidth, 80);
     
     // Create dashboard content
     const projectDashboardContent = 
@@ -794,30 +816,17 @@ function listTasks(tasksPath, statusFilter, withSubtasks = false) {
       return;
     }
     
-    // Use the previously defined terminalWidth for responsive table
+    // COMPLETELY REVISED TABLE APPROACH
+    // Define fixed column widths based on terminal size
+    const idWidth = 10;
+    const statusWidth = 20;
+    const priorityWidth = 10;
+    const depsWidth = 25;
     
-    // Define column widths based on percentage of available space
-    // Reserve minimum widths for ID, Status, Priority and Dependencies
-    const minIdWidth = 4;
-    const minStatusWidth = 12;
-    const minPriorityWidth = 8;
-    const minDepsWidth = 15;
+    // Calculate title width from available space
+    const titleWidth = terminalWidth - idWidth - statusWidth - priorityWidth - depsWidth - 10; // 10 for borders and padding
     
-    // Calculate available space for the title column
-    const minFixedColumnsWidth = minIdWidth + minStatusWidth + minPriorityWidth + minDepsWidth;
-    const tableMargin = 10; // Account for table borders and padding
-    const availableTitleWidth = Math.max(30, terminalWidth - minFixedColumnsWidth - tableMargin);
-    
-    // Scale column widths proportionally
-    const colWidths = [
-      minIdWidth,
-      availableTitleWidth,
-      minStatusWidth,
-      minPriorityWidth,
-      minDepsWidth
-    ];
-    
-    // Create a table for tasks
+    // Create a table with correct borders and spacing
     const table = new Table({
       head: [
         chalk.cyan.bold('ID'),
@@ -826,61 +835,118 @@ function listTasks(tasksPath, statusFilter, withSubtasks = false) {
         chalk.cyan.bold('Priority'),
         chalk.cyan.bold('Dependencies')
       ],
-      colWidths: colWidths,
-      wordWrap: true
+      colWidths: [idWidth, titleWidth, statusWidth, priorityWidth, depsWidth],
+      style: {
+        head: [], // No special styling for header
+        border: [], // No special styling for border
+        compact: false // Use default spacing
+      },
+      wordWrap: true,
+      wrapOnWordBoundary: true,
     });
     
-    // Add tasks to the table
+    // Process tasks for the table
     filteredTasks.forEach(task => {
-      // Get a list of task dependencies
-      const formattedDeps = formatDependenciesWithStatus(task.dependencies, data.tasks, true);
+      // Format dependencies with status indicators (colored)
+      let depText = 'None';
+      if (task.dependencies && task.dependencies.length > 0) {
+        // Use the proper formatDependenciesWithStatus function for colored status
+        depText = formatDependenciesWithStatus(task.dependencies, data.tasks, true);
+      } else {
+        depText = chalk.gray('None');
+      }
       
+      // Clean up any ANSI codes or confusing characters
+      const cleanTitle = task.title.replace(/\n/g, ' ');
+      
+      // Get priority color
+      const priorityColor = {
+        'high': chalk.red,
+        'medium': chalk.yellow,
+        'low': chalk.gray
+      }[task.priority || 'medium'] || chalk.white;
+      
+      // Format status
+      const status = getStatusWithColor(task.status, true);
+      
+      // Add the row without truncating dependencies
       table.push([
-        task.id,
-        truncate(task.title, availableTitleWidth - 3), // -3 for table cell padding
-        getStatusWithColor(task.status),
-        chalk.white(task.priority || 'medium'),
-        formattedDeps
+        task.id.toString(),
+        truncate(cleanTitle, titleWidth - 3),
+        status,
+        priorityColor(truncate(task.priority || 'medium', priorityWidth - 2)),
+        depText // No truncation for dependencies
       ]);
       
       // Add subtasks if requested
       if (withSubtasks && task.subtasks && task.subtasks.length > 0) {
         task.subtasks.forEach(subtask => {
-          // Format subtask dependencies
-          let subtaskDeps = '';
-          
+          // Format subtask dependencies with status indicators
+          let subtaskDepText = 'None';
           if (subtask.dependencies && subtask.dependencies.length > 0) {
-            subtaskDeps = subtask.dependencies.map(depId => {
+            // Handle both subtask-to-subtask and subtask-to-task dependencies
+            const formattedDeps = subtask.dependencies.map(depId => {
               // Check if it's a dependency on another subtask
-              const foundSubtask = task.subtasks.find(st => st.id === depId);
-              
-              if (foundSubtask) {
-                const isDone = foundSubtask.status === 'done' || foundSubtask.status === 'completed';
-                const statusIcon = isDone ? 
-                  chalk.green('✅') : 
-                  chalk.yellow('⏱️');
-                
-                return `${statusIcon} ${chalk.cyan(`${task.id}.${depId}`)}`;
+              if (typeof depId === 'number' && depId < 100) {
+                const foundSubtask = task.subtasks.find(st => st.id === depId);
+                if (foundSubtask) {
+                  const isDone = foundSubtask.status === 'done' || foundSubtask.status === 'completed';
+                  const isInProgress = foundSubtask.status === 'in-progress';
+                  
+                  // Use consistent color formatting instead of emojis
+                  if (isDone) {
+                    return chalk.green.bold(`${task.id}.${depId}`);
+                  } else if (isInProgress) {
+                    return chalk.hex('#FFA500').bold(`${task.id}.${depId}`);
+                  } else {
+                    return chalk.red.bold(`${task.id}.${depId}`);
+                  }
+                }
               }
-              
+              // Default to regular task dependency
+              const depTask = data.tasks.find(t => t.id === depId);
+              if (depTask) {
+                const isDone = depTask.status === 'done' || depTask.status === 'completed';
+                const isInProgress = depTask.status === 'in-progress';
+                // Use the same color scheme as in formatDependenciesWithStatus
+                if (isDone) {
+                  return chalk.green.bold(`${depId}`);
+                } else if (isInProgress) {
+                  return chalk.hex('#FFA500').bold(`${depId}`);
+                } else {
+                  return chalk.red.bold(`${depId}`);
+                }
+              }
               return chalk.cyan(depId.toString());
             }).join(', ');
-          } else {
-            subtaskDeps = chalk.gray('None');
+            
+            subtaskDepText = formattedDeps || chalk.gray('None');
           }
           
+          // Add the subtask row without truncating dependencies
           table.push([
             `${task.id}.${subtask.id}`,
-            chalk.dim(`└─ ${truncate(subtask.title, availableTitleWidth - 5)}`), // -5 for the "└─ " prefix
-            getStatusWithColor(subtask.status),
+            chalk.dim(`└─ ${truncate(subtask.title, titleWidth - 5)}`),
+            getStatusWithColor(subtask.status, true),
             chalk.dim('-'),
-            subtaskDeps
+            subtaskDepText // No truncation for dependencies
           ]);
         });
       }
     });
     
-    console.log(table.toString());
+    // Ensure we output the table even if it had to wrap
+    try {
+      console.log(table.toString());
+    } catch (err) {
+      log('error', `Error rendering table: ${err.message}`);
+      
+      // Fall back to simpler output
+      console.log(chalk.yellow('\nFalling back to simple task list due to terminal width constraints:'));
+      filteredTasks.forEach(task => {
+        console.log(`${chalk.cyan(task.id)}: ${chalk.white(task.title)} - ${getStatusWithColor(task.status)}`);
+      });
+    }
     
     // Show filter info if applied
     if (statusFilter) {
@@ -891,8 +957,8 @@ function listTasks(tasksPath, statusFilter, withSubtasks = false) {
     // Define priority colors
     const priorityColors = {
       'high': chalk.red.bold,
-      'medium': chalk.yellow,
-      'low': chalk.gray
+        'medium': chalk.yellow,
+        'low': chalk.gray
     };
     
     // Show next task box in a prominent color
@@ -902,25 +968,35 @@ function listTasks(tasksPath, statusFilter, withSubtasks = false) {
       if (nextTask.subtasks && nextTask.subtasks.length > 0) {
         subtasksSection = `\n\n${chalk.white.bold('Subtasks:')}\n`;
         subtasksSection += nextTask.subtasks.map(subtask => {
-          const subtaskStatus = getStatusWithColor(subtask.status || 'pending');
-          return `${chalk.cyan(`${nextTask.id}.${subtask.id}`)} ${subtaskStatus} ${subtask.title}`;
+          // Using a more simplified format for subtask status display
+          const status = subtask.status || 'pending';
+          const statusColors = {
+            'done': chalk.green,
+            'completed': chalk.green,
+            'pending': chalk.yellow,
+            'in-progress': chalk.blue,
+            'deferred': chalk.gray,
+            'blocked': chalk.red
+          };
+          const statusColor = statusColors[status.toLowerCase()] || chalk.white;
+          return `${chalk.cyan(`${nextTask.id}.${subtask.id}`)} [${statusColor(status)}] ${subtask.title}`;
         }).join('\n');
       }
       
       console.log(boxen(
         chalk.hex('#FF8800').bold(`🔥 Next Task to Work On: #${nextTask.id} - ${nextTask.title}`) + '\n\n' +
-        `${chalk.white('Priority:')} ${priorityColors[nextTask.priority || 'medium'](nextTask.priority || 'medium')}   ${chalk.white('Status:')} ${getStatusWithColor(nextTask.status)}\n` +
-        `${chalk.white('Dependencies:')} ${formatDependenciesWithStatus(nextTask.dependencies, data.tasks, true)}\n\n` +
+        `${chalk.white('Priority:')} ${priorityColors[nextTask.priority || 'medium'](nextTask.priority || 'medium')}   ${chalk.white('Status:')} ${getStatusWithColor(nextTask.status, true)}\n` +
+        `${chalk.white('Dependencies:')} ${nextTask.dependencies && nextTask.dependencies.length > 0 ? formatDependenciesWithStatus(nextTask.dependencies, data.tasks, true) : chalk.gray('None')}\n\n` +
         `${chalk.white('Description:')} ${nextTask.description}` +
         subtasksSection + '\n\n' +
         `${chalk.cyan('Start working:')} ${chalk.yellow(`task-master set-status --id=${nextTask.id} --status=in-progress`)}\n` +
         `${chalk.cyan('View details:')} ${chalk.yellow(`task-master show ${nextTask.id}`)}`,
         { 
-          padding: 1, 
+          padding: { left: 2, right: 2, top: 1, bottom: 1 },
           borderColor: '#FF8800', 
           borderStyle: 'round', 
           margin: { top: 1, bottom: 1 },
-          title: '⚡ RECOMMENDED NEXT ACTION ⚡',
+          title: '⚡ RECOMMENDED NEXT TASK ⚡',
           titleAlignment: 'center',
           width: terminalWidth - 4, // Use full terminal width minus a small margin
           fullscreen: false // Keep it expandable but not literally fullscreen
@@ -935,7 +1011,7 @@ function listTasks(tasksPath, statusFilter, withSubtasks = false) {
           borderColor: '#FF8800', 
           borderStyle: 'round', 
           margin: { top: 1, bottom: 1 },
-          title: '⚡ NEXT ACTION ⚡',
+          title: '⚡ NEXT TASK ⚡',
           titleAlignment: 'center',
           width: terminalWidth - 4, // Use full terminal width minus a small margin
         }
@@ -960,6 +1036,23 @@ function listTasks(tasksPath, statusFilter, withSubtasks = false) {
     
     process.exit(1);
   }
+}
+
+/**
+ * Safely apply chalk coloring, stripping ANSI codes when calculating string length
+ * @param {string} text - Original text
+ * @param {Function} colorFn - Chalk color function
+ * @param {number} maxLength - Maximum allowed length
+ * @returns {string} Colored text that won't break table layout
+ */
+function safeColor(text, colorFn, maxLength = 0) {
+  if (!text) return '';
+  
+  // If maxLength is provided, truncate the text first
+  const baseText = maxLength > 0 ? truncate(text, maxLength) : text;
+  
+  // Apply color function if provided, otherwise return as is
+  return colorFn ? colorFn(baseText) : baseText;
 }
 
 /**
@@ -1087,7 +1180,7 @@ async function expandTask(taskId, numSubtasks = CONFIG.defaultSubtasks, useResea
         `${taskId}.${subtask.id}`,
         truncate(subtask.title, 47),
         deps,
-        getStatusWithColor(subtask.status)
+        getStatusWithColor(subtask.status, true)
       ]);
     });
     

@@ -542,7 +542,7 @@ function createProjectStructure(projectName, projectDescription, projectVersion,
     chalk.white('1. ') + chalk.yellow('Rename .env.example to .env and add your ANTHROPIC_API_KEY and PERPLEXITY_API_KEY') + '\n' +
     chalk.white('2. ') + chalk.yellow('Discuss your idea with AI, and once ready ask for a PRD using the example_prd.txt file, and save what you get to scripts/PRD.txt') + '\n' +
     chalk.white('3. ') + chalk.yellow('Ask Cursor Agent to parse your PRD.txt and generate tasks') + '\n' +
-    chalk.white('   └─ ') + chalk.dim('You can also run ') + chalk.cyan('npm run parse-prd -- --input=<your-prd-file.txt>') + '\n' +
+    chalk.white('   └─ ') + chalk.dim('You can also run ') + chalk.cyan('task-master parse-prd <your-prd-file.txt>') + '\n' +
     chalk.white('4. ') + chalk.yellow('Ask Cursor to analyze the complexity of your tasks') + '\n' +
     chalk.white('5. ') + chalk.yellow('Ask Cursor which task is next to determine where to start') + '\n' +
     chalk.white('6. ') + chalk.yellow('Ask Cursor to expand any complex tasks that are too large or complex.') + '\n' +

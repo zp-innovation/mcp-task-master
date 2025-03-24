@@ -41,7 +41,29 @@ const program = new Command();
 program
   .name('task-master')
   .description('Claude Task Master CLI')
-  .version(version);
+  .version(version)
+  .addHelpText('afterAll', () => {
+    // Add the same help output that dev.js uses
+    const child = spawn('node', [devScriptPath, '--help'], {
+      stdio: ['inherit', 'pipe', 'inherit'],
+      cwd: process.cwd()
+    });
+    
+    let output = '';
+    child.stdout.on('data', (data) => {
+      output += data.toString();
+    });
+    
+    child.on('close', () => {
+      // Only display the custom help text part, not the commander-generated part
+      const customHelpStart = output.indexOf('Task Master CLI');
+      if (customHelpStart > -1) {
+        console.log('\n' + output.substring(customHelpStart));
+      }
+    });
+    
+    return ''; // Return empty string to prevent immediate display
+  });
 
 program
   .command('init')
@@ -164,12 +186,12 @@ program
 
 program
   .command('expand')
-  .description('Expand tasks with subtasks')
+  .description('Break down tasks into detailed subtasks')
   .option('-f, --file <file>', 'Path to the tasks file', 'tasks/tasks.json')
   .option('-i, --id <id>', 'Task ID to expand')
   .option('-a, --all', 'Expand all tasks')
   .option('-n, --num <number>', 'Number of subtasks to generate')
-  .option('-r, --no-research', 'Disable Perplexity AI for research-backed subtask generation')
+  .option('--research', 'Enable Perplexity AI for research-backed subtask generation')
   .option('-p, --prompt <text>', 'Additional context to guide subtask generation')
   .option('--force', 'Force regeneration of subtasks for tasks that already have them')
   .action((options) => {
@@ -178,7 +200,7 @@ program
     if (options.id) args.push('--id', options.id);
     if (options.all) args.push('--all');
     if (options.num) args.push('--num', options.num);
-    if (!options.research) args.push('--no-research');
+    if (options.research) args.push('--research');
     if (options.prompt) args.push('--prompt', options.prompt);
     if (options.force) args.push('--force');
     runDevScript(args);
