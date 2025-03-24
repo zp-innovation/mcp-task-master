@@ -17,60 +17,7 @@
       "priority": "high",
       "details": "Create the foundational data structure including:\n- JSON schema for tasks.json\n- Task model with all required fields (id, title, description, status, dependencies, priority, details, testStrategy, subtasks)\n- Validation functions for the task model\n- Basic file system operations for reading/writing tasks.json\n- Error handling for file operations",
       "testStrategy": "Verify that the tasks.json structure can be created, read, and validated. Test with sample data to ensure all fields are properly handled and that validation correctly identifies invalid structures.",
-      "subtasks": [
-        {
-          "id": 1,
-          "title": "Design JSON Schema for tasks.json",
-          "description": "Create a formal JSON Schema definition that validates the structure of the tasks.json file. The schema should enforce the data model specified in the PRD, including the Task Model and Tasks Collection Model with all required fields (id, title, description, status, dependencies, priority, details, testStrategy, subtasks). Include type validation, required fields, and constraints on enumerated values (like status and priority options).",
-          "status": "done",
-          "dependencies": [],
-          "acceptanceCriteria": "- JSON Schema file is created with proper validation for all fields in the Task and Tasks Collection models\n- Schema validates that task IDs are unique integers\n- Schema enforces valid status values (\"pending\", \"done\", \"deferred\")\n- Schema enforces valid priority values (\"high\", \"medium\", \"low\")\n- Schema validates the nested structure of subtasks\n- Schema includes validation for the meta object with projectName, version, timestamps, etc."
-        },
-        {
-          "id": 2,
-          "title": "Implement Task Model Classes",
-          "description": "Create JavaScript classes that represent the Task and Tasks Collection models. Implement constructor methods that validate input data, getter/setter methods for properties, and utility methods for common operations (like adding subtasks, changing status, etc.). These classes will serve as the programmatic interface to the task data structure.",
-          "status": "done",
-          "dependencies": [
-            1
-          ],
-          "acceptanceCriteria": "- Task class with all required properties from the PRD\n- TasksCollection class that manages an array of Task objects\n- Methods for creating, retrieving, updating tasks\n- Methods for managing subtasks within a task\n- Input validation in constructors and setters\n- Proper TypeScript/JSDoc type definitions for all classes and methods"
-        },
-        {
-          "id": 3,
-          "title": "Create File System Operations for tasks.json",
-          "description": "Implement functions to read from and write to the tasks.json file. These functions should handle file system operations asynchronously, manage file locking to prevent corruption during concurrent operations, and ensure atomic writes (using temporary files and rename operations). Include initialization logic to create a default tasks.json file if one doesn't exist.",
-          "status": "done",
-          "dependencies": [
-            1,
-            2
-          ],
-          "acceptanceCriteria": "- Asynchronous read function that parses tasks.json into model objects\n- Asynchronous write function that serializes model objects to tasks.json\n- File locking mechanism to prevent concurrent write operations\n- Atomic write operations to prevent file corruption\n- Initialization function that creates default tasks.json if not present\n- Functions properly handle relative and absolute paths"
-        },
-        {
-          "id": 4,
-          "title": "Implement Validation Functions",
-          "description": "Create a comprehensive set of validation functions that can verify the integrity of the task data structure. These should include validation of individual tasks, validation of the entire tasks collection, dependency cycle detection, and validation of relationships between tasks. These functions will be used both when loading data and before saving to ensure data integrity.",
-          "status": "done",
-          "dependencies": [
-            1,
-            2
-          ],
-          "acceptanceCriteria": "- Functions to validate individual task objects against schema\n- Function to validate entire tasks collection\n- Dependency cycle detection algorithm\n- Validation of parent-child relationships in subtasks\n- Validation of task ID uniqueness\n- Functions return detailed error messages for invalid data\n- Unit tests covering various validation scenarios"
-        },
-        {
-          "id": 5,
-          "title": "Implement Error Handling System",
-          "description": "Create a robust error handling system for file operations and data validation. Implement custom error classes for different types of errors (file not found, permission denied, invalid data, etc.), error logging functionality, and recovery mechanisms where appropriate. This system should provide clear, actionable error messages to users while maintaining system stability.",
-          "status": "done",
-          "dependencies": [
-            1,
-            3,
-            4
-          ],
-          "acceptanceCriteria": "- Custom error classes for different error types (FileError, ValidationError, etc.)\n- Consistent error format with error code, message, and details\n- Error logging functionality with configurable verbosity\n- Recovery mechanisms for common error scenarios\n- Graceful degradation when non-critical errors occur\n- User-friendly error messages that suggest solutions\n- Unit tests for error handling in various scenarios"
-        }
-      ]
+      "subtasks": []
     },
     {
       "id": 2,
@@ -83,59 +30,7 @@
       "priority": "high",
       "details": "Implement the CLI foundation including:\n- Set up Commander.js for command parsing\n- Create help documentation for all commands\n- Implement colorized console output for better readability\n- Add logging system with configurable levels\n- Handle global options (--help, --version, --file, --quiet, --debug, --json)",
       "testStrategy": "Test each command with various parameters to ensure proper parsing. Verify help documentation is comprehensive and accurate. Test logging at different verbosity levels.",
-      "subtasks": [
-        {
-          "id": 1,
-          "title": "Set up Commander.js Framework",
-          "description": "Initialize and configure Commander.js as the command-line parsing framework. Create the main CLI entry point file that will serve as the application's command-line interface. Set up the basic command structure with program name, version, and description from package.json. Implement the core program flow including command registration pattern and error handling.",
-          "status": "done",
-          "dependencies": [],
-          "acceptanceCriteria": "- Commander.js is properly installed and configured in the project\n- CLI entry point file is created with proper Node.js shebang and permissions\n- Program metadata (name, version, description) is correctly loaded from package.json\n- Basic command registration pattern is established\n- Global error handling is implemented to catch and display unhandled exceptions"
-        },
-        {
-          "id": 2,
-          "title": "Implement Global Options Handling",
-          "description": "Add support for all required global options including --help, --version, --file, --quiet, --debug, and --json. Implement the logic to process these options and modify program behavior accordingly. Create a configuration object that stores these settings and can be accessed by all commands. Ensure options can be combined and have appropriate precedence rules.",
-          "status": "done",
-          "dependencies": [
-            1
-          ],
-          "acceptanceCriteria": "- All specified global options (--help, --version, --file, --quiet, --debug, --json) are implemented\n- Options correctly modify program behavior when specified\n- Alternative tasks.json file can be specified with --file option\n- Output verbosity is controlled by --quiet and --debug flags\n- JSON output format is supported with the --json flag\n- Help text is displayed when --help is specified\n- Version information is displayed when --version is specified"
-        },
-        {
-          "id": 3,
-          "title": "Create Command Help Documentation System",
-          "description": "Develop a comprehensive help documentation system that provides clear usage instructions for all commands and options. Implement both command-specific help and general program help. Ensure help text is well-formatted, consistent, and includes examples. Create a centralized system for managing help text to ensure consistency across the application.",
-          "status": "done",
-          "dependencies": [
-            1,
-            2
-          ],
-          "acceptanceCriteria": "- General program help shows all available commands and global options\n- Command-specific help shows detailed usage information for each command\n- Help text includes clear examples of command usage\n- Help formatting is consistent and readable across all commands\n- Help system handles both explicit help requests (--help) and invalid command syntax"
-        },
-        {
-          "id": 4,
-          "title": "Implement Colorized Console Output",
-          "description": "Create a utility module for colorized console output to improve readability and user experience. Implement different color schemes for various message types (info, warning, error, success). Add support for text styling (bold, underline, etc.) and ensure colors are used consistently throughout the application. Make sure colors can be disabled in environments that don't support them.",
-          "status": "done",
-          "dependencies": [
-            1
-          ],
-          "acceptanceCriteria": "- Utility module provides consistent API for colorized output\n- Different message types (info, warning, error, success) use appropriate colors\n- Text styling options (bold, underline, etc.) are available\n- Colors are disabled automatically in environments that don't support them\n- Color usage is consistent across the application\n- Output remains readable when colors are disabled"
-        },
-        {
-          "id": 5,
-          "title": "Develop Configurable Logging System",
-          "description": "Create a logging system with configurable verbosity levels that integrates with the CLI. Implement different logging levels (error, warn, info, debug, trace) and ensure log output respects the verbosity settings specified by global options. Add support for log output redirection to files. Ensure logs include appropriate timestamps and context information.",
-          "status": "done",
-          "dependencies": [
-            1,
-            2,
-            4
-          ],
-          "acceptanceCriteria": "- Logging system supports multiple verbosity levels (error, warn, info, debug, trace)\n- Log output respects verbosity settings from global options (--quiet, --debug)\n- Logs include timestamps and appropriate context information\n- Log messages use consistent formatting and appropriate colors\n- Logging can be redirected to files when needed\n- Debug logs provide detailed information useful for troubleshooting\n- Logging system has minimal performance impact when not in use\n\nEach of these subtasks directly addresses a component of the CLI foundation as specified in the task description, and together they provide a complete implementation of the required functionality. The subtasks are ordered in a logical sequence that respects their dependencies."
-        }
-      ]
+      "subtasks": []
     },
     {
       "id": 3,
@@ -1474,7 +1369,7 @@
       "id": 22,
       "title": "Create Comprehensive Test Suite for Task Master CLI",
       "description": "Develop a complete testing infrastructure for the Task Master CLI that includes unit, integration, and end-to-end tests to verify all core functionality and error handling.",
-      "status": "pending",
+      "status": "in-progress",
       "dependencies": [
         21
       ],
@@ -1486,7 +1381,7 @@
           "id": 1,
           "title": "Set Up Jest Testing Environment",
           "description": "Configure Jest for the project, including setting up the jest.config.js file, adding necessary dependencies, and creating the initial test directory structure. Implement proper mocking for Claude API interactions, file system operations, and user input/output. Set up test coverage reporting and configure it to run in the CI pipeline.",
-          "status": "pending",
+          "status": "done",
           "dependencies": [],
           "acceptanceCriteria": "- jest.config.js is properly configured for the project"
         },

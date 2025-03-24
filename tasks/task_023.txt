@@ -1,7 +1,7 @@
 # Task ID: 23
 # Title: Implement MCP (Model Context Protocol) Server Functionality for Task Master
 # Status: pending
-# Dependencies: ⏱️ 22 (pending)
+# Dependencies: ⏱️ 22 (in-progress)
 # Priority: medium
 # Description: Extend Task Master to function as an MCP server, allowing it to provide context management services to other applications following the Model Context Protocol specification.
 # Details:

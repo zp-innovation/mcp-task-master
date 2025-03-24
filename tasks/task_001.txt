@@ -14,35 +14,3 @@ Create the foundational data structure including:
 
 # Test Strategy:
 Verify that the tasks.json structure can be created, read, and validated. Test with sample data to ensure all fields are properly handled and that validation correctly identifies invalid structures.
-
-# Subtasks:
-## 1. Design JSON Schema for tasks.json [done]
-### Dependencies: None
-### Description: Create a formal JSON Schema definition that validates the structure of the tasks.json file. The schema should enforce the data model specified in the PRD, including the Task Model and Tasks Collection Model with all required fields (id, title, description, status, dependencies, priority, details, testStrategy, subtasks). Include type validation, required fields, and constraints on enumerated values (like status and priority options).
-### Details:
-
-
-## 2. Implement Task Model Classes [done]
-### Dependencies: 1 (done)
-### Description: Create JavaScript classes that represent the Task and Tasks Collection models. Implement constructor methods that validate input data, getter/setter methods for properties, and utility methods for common operations (like adding subtasks, changing status, etc.). These classes will serve as the programmatic interface to the task data structure.
-### Details:
-
-
-## 3. Create File System Operations for tasks.json [done]
-### Dependencies: 1 (done), 2 (done)
-### Description: Implement functions to read from and write to the tasks.json file. These functions should handle file system operations asynchronously, manage file locking to prevent corruption during concurrent operations, and ensure atomic writes (using temporary files and rename operations). Include initialization logic to create a default tasks.json file if one doesn't exist.
-### Details:
-
-
-## 4. Implement Validation Functions [done]
-### Dependencies: 1 (done), 2 (done)
-### Description: Create a comprehensive set of validation functions that can verify the integrity of the task data structure. These should include validation of individual tasks, validation of the entire tasks collection, dependency cycle detection, and validation of relationships between tasks. These functions will be used both when loading data and before saving to ensure data integrity.
-### Details:
-
-
-## 5. Implement Error Handling System [done]
-### Dependencies: 1 (done), 3 (done), 4 (done)
-### Description: Create a robust error handling system for file operations and data validation. Implement custom error classes for different types of errors (file not found, permission denied, invalid data, etc.), error logging functionality, and recovery mechanisms where appropriate. This system should provide clear, actionable error messages to users while maintaining system stability.
-### Details:
-
-

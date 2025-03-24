@@ -1,7 +1,7 @@
 # Task ID: 24
 # Title: Implement AI-Powered Test Generation Command
 # Status: pending
-# Dependencies: ⏱️ 22 (pending)
+# Dependencies: ⏱️ 22 (in-progress)
 # Priority: high
 # Description: Create a new 'generate-test' command that leverages AI to automatically produce Jest test files for tasks based on their descriptions and subtasks.
 # Details:

@@ -50,6 +50,26 @@ const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
 });
 
+// Import perplexity if available
+let perplexity;
+
+try {
+  if (process.env.PERPLEXITY_API_KEY) {
+    // Using the existing approach from ai-services.js
+    const OpenAI = (await import('openai')).default;
+    
+    perplexity = new OpenAI({
+      apiKey: process.env.PERPLEXITY_API_KEY, 
+      baseURL: 'https://api.perplexity.ai',
+    });
+    
+    log('info', `Initialized Perplexity client with OpenAI compatibility layer`);
+  }
+} catch (error) {
+  log('warn', `Failed to initialize Perplexity client: ${error.message}`);
+  log('warn', 'Research-backed features will not be available');
+}
+
 /**
  * Parse a PRD file and generate tasks
  * @param {string} prdPath - Path to the PRD file
@@ -109,10 +129,18 @@ async function parsePRD(prdPath, tasksPath, numTasks) {
  * @param {string} tasksPath - Path to the tasks.json file
  * @param {number} fromId - Task ID to start updating from
  * @param {string} prompt - Prompt with new context
+ * @param {boolean} useResearch - Whether to use Perplexity AI for research
  */
-async function updateTasks(tasksPath, fromId, prompt) {
+async function updateTasks(tasksPath, fromId, prompt, useResearch = false) {
   try {
     log('info', `Updating tasks from ID ${fromId} with prompt: "${prompt}"`);
+    
+    // Validate research flag
+    if (useResearch && (!perplexity || !process.env.PERPLEXITY_API_KEY)) {
+      log('warn', 'Perplexity AI is not available. Falling back to Claude AI.');
+      console.log(chalk.yellow('Perplexity AI is not available (API key may be missing). Falling back to Claude AI.'));
+      useResearch = false;
+    }
     
     // Read the tasks file
     const data = readJSON(tasksPath);
@@ -169,59 +197,109 @@ The changes described in the prompt should be applied to ALL tasks in the list.`
 
     const taskData = JSON.stringify(tasksToUpdate, null, 2);
     
-    // Call Claude to update the tasks
-    const message = await anthropic.messages.create({
-      model: CONFIG.model,
-      max_tokens: CONFIG.maxTokens,
-      temperature: CONFIG.temperature,
-      system: systemPrompt,
-      messages: [
-        {
-          role: 'user',
-          content: `Here are the tasks to update:
+    let updatedTasks;
+    const loadingIndicator = startLoadingIndicator(useResearch 
+      ? 'Updating tasks with Perplexity AI research...' 
+      : 'Updating tasks with Claude AI...');
+    
+    try {
+      if (useResearch) {
+        log('info', 'Using Perplexity AI for research-backed task updates');
+        
+        // Call Perplexity AI using format consistent with ai-services.js
+        const perplexityModel = process.env.PERPLEXITY_MODEL || 'sonar-small-online';
+        const result = await perplexity.chat.completions.create({
+          model: perplexityModel,
+          messages: [
+            {
+              role: "system", 
+              content: `${systemPrompt}\n\nAdditionally, please research the latest best practices, implementation details, and considerations when updating these tasks. Use your online search capabilities to gather relevant information.`
+            },
+            {
+              role: "user",
+              content: `Here are the tasks to update:
 ${taskData}
 
 Please update these tasks based on the following new context:
 ${prompt}
 
 Return only the updated tasks as a valid JSON array.`
+            }
+          ],
+          temperature: parseFloat(process.env.TEMPERATURE || CONFIG.temperature),
+          max_tokens: parseInt(process.env.MAX_TOKENS || CONFIG.maxTokens),
+        });
+        
+        const responseText = result.choices[0].message.content;
+        
+        // Extract JSON from response
+        const jsonStart = responseText.indexOf('[');
+        const jsonEnd = responseText.lastIndexOf(']');
+        
+        if (jsonStart === -1 || jsonEnd === -1) {
+          throw new Error("Could not find valid JSON array in Perplexity's response");
         }
-      ]
-    });
-    
-    const responseText = message.content[0].text;
-    
-    // Extract JSON from response
-    const jsonStart = responseText.indexOf('[');
-    const jsonEnd = responseText.lastIndexOf(']');
-    
-    if (jsonStart === -1 || jsonEnd === -1) {
-      throw new Error("Could not find valid JSON array in Claude's response");
-    }
-    
-    const jsonText = responseText.substring(jsonStart, jsonEnd + 1);
-    const updatedTasks = JSON.parse(jsonText);
-    
-    // Replace the tasks in the original data
-    updatedTasks.forEach(updatedTask => {
-      const index = data.tasks.findIndex(t => t.id === updatedTask.id);
-      if (index !== -1) {
-        data.tasks[index] = updatedTask;
+        
+        const jsonText = responseText.substring(jsonStart, jsonEnd + 1);
+        updatedTasks = JSON.parse(jsonText);
+      } else {
+        // Call Claude to update the tasks
+        const message = await anthropic.messages.create({
+          model: CONFIG.model,
+          max_tokens: CONFIG.maxTokens,
+          temperature: CONFIG.temperature,
+          system: systemPrompt,
+          messages: [
+            {
+              role: 'user',
+              content: `Here are the tasks to update:
+${taskData}
+
+Please update these tasks based on the following new context:
+${prompt}
+
+Return only the updated tasks as a valid JSON array.`
+            }
+          ]
+        });
+        
+        const responseText = message.content[0].text;
+        
+        // Extract JSON from response
+        const jsonStart = responseText.indexOf('[');
+        const jsonEnd = responseText.lastIndexOf(']');
+        
+        if (jsonStart === -1 || jsonEnd === -1) {
+          throw new Error("Could not find valid JSON array in Claude's response");
+        }
+        
+        const jsonText = responseText.substring(jsonStart, jsonEnd + 1);
+        updatedTasks = JSON.parse(jsonText);
       }
-    });
-    
-    // Write the updated tasks to the file
-    writeJSON(tasksPath, data);
-    
-    log('success', `Successfully updated ${updatedTasks.length} tasks`);
-    
-    // Generate individual task files
-    await generateTaskFiles(tasksPath, path.dirname(tasksPath));
-    
-    console.log(boxen(
-      chalk.green(`Successfully updated ${updatedTasks.length} tasks`),
-      { padding: 1, borderColor: 'green', borderStyle: 'round' }
-    ));
+      
+      // Replace the tasks in the original data
+      updatedTasks.forEach(updatedTask => {
+        const index = data.tasks.findIndex(t => t.id === updatedTask.id);
+        if (index !== -1) {
+          data.tasks[index] = updatedTask;
+        }
+      });
+      
+      // Write the updated tasks to the file
+      writeJSON(tasksPath, data);
+      
+      log('success', `Successfully updated ${updatedTasks.length} tasks`);
+      
+      // Generate individual task files
+      await generateTaskFiles(tasksPath, path.dirname(tasksPath));
+      
+      console.log(boxen(
+        chalk.green(`Successfully updated ${updatedTasks.length} tasks`),
+        { padding: 1, borderColor: 'green', borderStyle: 'round' }
+      ));
+    } finally {
+      stopLoadingIndicator(loadingIndicator);
+    }
   } catch (error) {
     log('error', `Error updating tasks: ${error.message}`);
     console.error(chalk.red(`Error: ${error.message}`));

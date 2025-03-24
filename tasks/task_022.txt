@@ -1,6 +1,6 @@
 # Task ID: 22
 # Title: Create Comprehensive Test Suite for Task Master CLI
-# Status: pending
+# Status: in-progress
 # Dependencies: ✅ 21 (done)
 # Priority: high
 # Description: Develop a complete testing infrastructure for the Task Master CLI that includes unit, integration, and end-to-end tests to verify all core functionality and error handling.
@@ -57,20 +57,20 @@ Verification will involve:
 The task will be considered complete when all tests pass consistently, coverage meets targets, and the test suite can detect intentionally introduced bugs.
 
 # Subtasks:
-## 1. Set Up Jest Testing Environment [pending]
+## 1. Set Up Jest Testing Environment [done]
 ### Dependencies: None
 ### Description: Configure Jest for the project, including setting up the jest.config.js file, adding necessary dependencies, and creating the initial test directory structure. Implement proper mocking for Claude API interactions, file system operations, and user input/output. Set up test coverage reporting and configure it to run in the CI pipeline.
 ### Details:
 
 
 ## 2. Implement Unit Tests for Core Components [pending]
-### Dependencies: 1 (pending)
+### Dependencies: 1 (done)
 ### Description: Create a comprehensive set of unit tests for all utility functions, core logic components, and individual modules of the Task Master CLI. This includes tests for task creation, parsing, manipulation, data storage, retrieval, and formatting functions. Ensure all edge cases and error scenarios are covered.
 ### Details:
 
 
 ## 3. Develop Integration and End-to-End Tests [pending]
-### Dependencies: 1 (pending), 2 (pending)
+### Dependencies: 1 (done), 2 (pending)
 ### Description: Create integration tests that verify the correct interaction between different components of the CLI, including command execution, option parsing, and data flow. Implement end-to-end tests that simulate complete user workflows, such as creating a task, expanding it, and updating its status. Include tests for error scenarios, recovery processes, and handling large numbers of tasks.
 ### Details:
 

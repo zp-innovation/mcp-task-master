@@ -9,7 +9,9 @@
     "task-master-init": "./bin/task-master-init.js"
   },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "node --experimental-vm-modules node_modules/.bin/jest",
+    "test:watch": "node --experimental-vm-modules node_modules/.bin/jest --watch",
+    "test:coverage": "node --experimental-vm-modules node_modules/.bin/jest --coverage",
     "prepare-package": "node scripts/prepare-package.js",
     "prepublishOnly": "npm run prepare-package",
     "prepare": "chmod +x bin/task-master.js bin/task-master-init.js"
@@ -35,7 +37,7 @@
     "dotenv": "^16.3.1",
     "figlet": "^1.8.0",
     "gradient-string": "^3.0.0",
-    "openai": "^4.86.1",
+    "openai": "^4.89.0",
     "ora": "^8.2.0"
   },
   "engines": {
@@ -62,5 +64,12 @@
   "overrides": {
     "node-fetch": "^3.3.2",
     "whatwg-url": "^11.0.0"
+  },
+  "devDependencies": {
+    "@types/jest": "^29.5.14",
+    "jest": "^29.7.0",
+    "jest-environment-node": "^29.7.0",
+    "mock-fs": "^5.5.0",
+    "supertest": "^7.1.0"
   }
 }

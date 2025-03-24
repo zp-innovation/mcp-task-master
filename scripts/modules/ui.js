@@ -101,21 +101,21 @@ function createProgressBar(percent, length = 30) {
  */
 function getStatusWithColor(status) {
   if (!status) {
-    return chalk.gray('unknown');
+    return chalk.gray('❓ unknown');
   }
   
-  const statusColors = {
-    'done': chalk.green,
-    'completed': chalk.green,
-    'pending': chalk.yellow,
-    'in-progress': chalk.blue,
-    'deferred': chalk.gray,
-    'blocked': chalk.red,
-    'review': chalk.magenta
+  const statusConfig = {
+    'done': { color: chalk.green, icon: '✅' },
+    'completed': { color: chalk.green, icon: '✅' },
+    'pending': { color: chalk.yellow, icon: '⏱️' },
+    'in-progress': { color: chalk.blue, icon: '🔄' },
+    'deferred': { color: chalk.gray, icon: '⏱️' },
+    'blocked': { color: chalk.red, icon: '❌' },
+    'review': { color: chalk.magenta, icon: '👀' }
   };
   
-  const colorFunc = statusColors[status.toLowerCase()] || chalk.white;
-  return colorFunc(status);
+  const config = statusConfig[status.toLowerCase()] || { color: chalk.red, icon: '❌' };
+  return config.color(`${config.icon} ${status}`);
 }
 
 /**
@@ -337,9 +337,9 @@ function displayHelp() {
  * @returns {string} Colored complexity score
  */
 function getComplexityWithColor(score) {
-  if (score <= 3) return chalk.green(score.toString());
-  if (score <= 6) return chalk.yellow(score.toString());
-  return chalk.red(score.toString());
+  if (score <= 3) return chalk.green(`🟢 ${score}`);
+  if (score <= 6) return chalk.yellow(`🟡 ${score}`);
+  return chalk.red(`🔴 ${score}`);
 }
 
 /**

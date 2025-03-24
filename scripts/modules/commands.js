@@ -72,10 +72,12 @@ function registerCommands(programInstance) {
     .option('-f, --file <file>', 'Path to the tasks file', 'tasks/tasks.json')
     .option('--from <id>', 'Task ID to start updating from (tasks with ID >= this value will be updated)', '1')
     .option('-p, --prompt <text>', 'Prompt explaining the changes or new context (required)')
+    .option('-r, --research', 'Use Perplexity AI for research-backed task updates')
     .action(async (options) => {
       const tasksPath = options.file;
       const fromId = parseInt(options.from, 10);
       const prompt = options.prompt;
+      const useResearch = options.research || false;
       
       if (!prompt) {
         console.error(chalk.red('Error: --prompt parameter is required. Please provide information about the changes.'));
@@ -85,7 +87,11 @@ function registerCommands(programInstance) {
       console.log(chalk.blue(`Updating tasks from ID >= ${fromId} with prompt: "${prompt}"`));
       console.log(chalk.blue(`Tasks file: ${tasksPath}`));
       
-      await updateTasks(tasksPath, fromId, prompt);
+      if (useResearch) {
+        console.log(chalk.blue('Using Perplexity AI for research-backed task updates'));
+      }
+      
+      await updateTasks(tasksPath, fromId, prompt, useResearch);
     });
 
   // generate command
