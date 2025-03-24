@@ -207,7 +207,7 @@ The changes described in the prompt should be applied to ALL tasks in the list.`
         log('info', 'Using Perplexity AI for research-backed task updates');
         
         // Call Perplexity AI using format consistent with ai-services.js
-        const perplexityModel = process.env.PERPLEXITY_MODEL || 'sonar-small-online';
+        const perplexityModel = process.env.PERPLEXITY_MODEL || 'sonar-pro';
         const result = await perplexity.chat.completions.create({
           model: perplexityModel,
           messages: [
@@ -1756,7 +1756,7 @@ Your response must be a clean JSON array only, following exactly this format:
 DO NOT include any text before or after the JSON array. No explanations, no markdown formatting.`;
           
           const result = await perplexity.chat.completions.create({
-            model: PERPLEXITY_MODEL,
+            model: process.env.PERPLEXITY_MODEL || 'sonar-pro',
             messages: [
               {
                 role: "system", 
@@ -1767,8 +1767,8 @@ DO NOT include any text before or after the JSON array. No explanations, no mark
                 content: researchPrompt
               }
             ],
-            temperature: TEMPERATURE,
-            max_tokens: MAX_TOKENS,
+            temperature: CONFIG.temperature,
+            max_tokens: CONFIG.maxTokens,
           });
           
           // Extract the response text
@@ -1889,7 +1889,13 @@ DO NOT include any text before or after the JSON array. No explanations, no mark
           // 3. Replace single quotes with double quotes for property values
           cleanedResponse = cleanedResponse.replace(/:(\s*)'([^']*)'(\s*[,}])/g, ':$1"$2"$3');
           
-          // 4. Add a special fallback option if we're still having issues
+          // 4. Fix unterminated strings - common with LLM responses
+          const untermStringPattern = /:(\s*)"([^"]*)(?=[,}])/g;
+          cleanedResponse = cleanedResponse.replace(untermStringPattern, ':$1"$2"');
+          
+          // 5. Fix multi-line strings by replacing newlines
+          cleanedResponse = cleanedResponse.replace(/:(\s*)"([^"]*)\n([^"]*)"/g, ':$1"$2 $3"');
+          
           try {
             complexityAnalysis = JSON.parse(cleanedResponse);
             console.log(chalk.green("Successfully parsed JSON after fixing common issues"));
@@ -2006,7 +2012,7 @@ Your response must be a clean JSON array only, following exactly this format:
 DO NOT include any text before or after the JSON array. No explanations, no markdown formatting.`;
 
               const result = await perplexity.chat.completions.create({
-                model: PERPLEXITY_MODEL,
+                model: process.env.PERPLEXITY_MODEL || 'sonar-pro',
                 messages: [
                   {
                     role: "system", 
@@ -2017,8 +2023,8 @@ DO NOT include any text before or after the JSON array. No explanations, no mark
                     content: missingTasksResearchPrompt
                   }
                 ],
-                temperature: TEMPERATURE,
-                max_tokens: MAX_TOKENS,
+                temperature: CONFIG.temperature,
+                max_tokens: CONFIG.maxTokens,
               });
               
               // Extract the response

@@ -305,7 +305,7 @@ async function generateSubtasksWithPerplexity(task, numSubtasks = 3, nextSubtask
     log('info', `Researching context for task ${task.id}: ${task.title}`);
     const perplexityClient = getPerplexityClient();
     
-    const PERPLEXITY_MODEL = process.env.PERPLEXITY_MODEL || 'sonar-small-online';
+    const PERPLEXITY_MODEL = process.env.PERPLEXITY_MODEL || 'sonar-pro';
     const researchLoadingIndicator = startLoadingIndicator('Researching best practices with Perplexity AI...');
     
     // Formulate research query based on task
@@ -493,13 +493,13 @@ function parseSubtasksFromText(text, startId, expectedCount, parentTaskId) {
 
 /**
  * Generate a prompt for complexity analysis
- * @param {Array} tasksData - Tasks data
+ * @param {Object} tasksData - Tasks data object containing tasks array
  * @returns {string} Generated prompt
  */
 function generateComplexityAnalysisPrompt(tasksData) {
   return `Analyze the complexity of the following tasks and provide recommendations for subtask breakdown:
 
-${tasksData.map(task => `
+${tasksData.tasks.map(task => `
 Task ID: ${task.id}
 Title: ${task.title}
 Description: ${task.description}

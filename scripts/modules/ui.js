@@ -391,7 +391,7 @@ function displayHelp() {
      `${chalk.dim('Optional')}${chalk.reset('')}`],
     [`${chalk.yellow('PERPLEXITY_MODEL')}${chalk.reset('')}`, 
      `${chalk.white('Perplexity model to use')}${chalk.reset('')}`, 
-     `${chalk.dim('Default: sonar-small-online')}${chalk.reset('')}`],
+     `${chalk.dim('Default: sonar-pro')}${chalk.reset('')}`],
     [`${chalk.yellow('DEBUG')}${chalk.reset('')}`, 
      `${chalk.white('Enable debug logging')}${chalk.reset('')}`, 
      `${chalk.dim(`Default: ${CONFIG.debug}`)}${chalk.reset('')}`],

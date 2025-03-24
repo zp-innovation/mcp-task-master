@@ -10,6 +10,7 @@ import { dirname, resolve } from 'path';
 import { createRequire } from 'module';
 import { spawn } from 'child_process';
 import { Command } from 'commander';
+import { displayHelp, displayBanner } from '../scripts/modules/ui.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -43,27 +44,16 @@ program
   .description('Claude Task Master CLI')
   .version(version)
   .addHelpText('afterAll', () => {
-    // Add the same help output that dev.js uses
-    const child = spawn('node', [devScriptPath, '--help'], {
-      stdio: ['inherit', 'pipe', 'inherit'],
-      cwd: process.cwd()
-    });
-    
-    let output = '';
-    child.stdout.on('data', (data) => {
-      output += data.toString();
-    });
-    
-    child.on('close', () => {
-      // Only display the custom help text part, not the commander-generated part
-      const customHelpStart = output.indexOf('Task Master CLI');
-      if (customHelpStart > -1) {
-        console.log('\n' + output.substring(customHelpStart));
-      }
-    });
-    
-    return ''; // Return empty string to prevent immediate display
+    // Use the same help display function as dev.js for consistency
+    displayHelp();
+    return ''; // Return empty string to prevent commander's default help
   });
+
+// Add custom help option to directly call our help display
+program.helpOption('-h, --help', 'Display help information');
+program.on('--help', () => {
+  displayHelp();
+});
 
 program
   .command('init')
@@ -146,11 +136,12 @@ program
 program
   .command('parse-prd')
   .description('Parse a PRD file and generate tasks')
-  .argument('<file>', 'Path to the PRD file')
+  .argument('[file]', 'Path to the PRD file')
   .option('-o, --output <file>', 'Output file path', 'tasks/tasks.json')
   .option('-n, --num-tasks <number>', 'Number of tasks to generate', '10')
   .action((file, options) => {
-    const args = ['parse-prd', file];
+    const args = ['parse-prd'];
+    if (file) args.push(file);
     if (options.output) args.push('--output', options.output);
     if (options.numTasks) args.push('--num-tasks', options.numTasks);
     runDevScript(args);
@@ -256,7 +247,7 @@ program
 
 program
   .command('show')
-  .description('Show details of a specific task by ID')
+  .description('Display detailed information about a specific task')
   .argument('[id]', 'Task ID to show')
   .option('-i, --id <id>', 'Task ID to show (alternative to argument)')
   .option('-f, --file <file>', 'Path to the tasks file', 'tasks/tasks.json')
@@ -326,4 +317,11 @@ program
     runDevScript(args);
   });
 
-program.parse(process.argv); 
+program.parse(process.argv);
+
+// Show help if no command was provided (just 'task-master' with no args)
+if (process.argv.length <= 2) {
+  displayBanner();
+  displayHelp();
+  process.exit(0);
+} 
