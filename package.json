@@ -52,6 +52,7 @@
   "files": [
     "scripts/init.js",
     "scripts/dev.js",
+    "scripts/modules/**",
     "assets/**",
     ".cursor/**",
     "README-task-master.md",
