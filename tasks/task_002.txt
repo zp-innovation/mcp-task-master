@@ -1,7 +1,7 @@
 # Task ID: 2
 # Title: Develop Command Line Interface Foundation
 # Status: done
-# Dependencies: ✅ 1 (done)
+# Dependencies: 1
 # Priority: high
 # Description: Create the basic CLI structure using Commander.js with command parsing and help documentation.
 # Details:

@@ -1,7 +1,7 @@
 # Task ID: 22
 # Title: Create Comprehensive Test Suite for Task Master CLI
 # Status: in-progress
-# Dependencies: ✅ 21 (done)
+# Dependencies: 21
 # Priority: high
 # Description: Develop a complete testing infrastructure for the Task Master CLI that includes unit, integration, and end-to-end tests to verify all core functionality and error handling.
 # Details:
@@ -64,13 +64,13 @@ The task will be considered complete when all tests pass consistently, coverage 
 
 
 ## 2. Implement Unit Tests for Core Components [pending]
-### Dependencies: 1 (done)
+### Dependencies: 22.1
 ### Description: Create a comprehensive set of unit tests for all utility functions, core logic components, and individual modules of the Task Master CLI. This includes tests for task creation, parsing, manipulation, data storage, retrieval, and formatting functions. Ensure all edge cases and error scenarios are covered.
 ### Details:
 
 
 ## 3. Develop Integration and End-to-End Tests [pending]
-### Dependencies: 1 (done), 2 (pending)
+### Dependencies: 22.1, 22.2
 ### Description: Create integration tests that verify the correct interaction between different components of the CLI, including command execution, option parsing, and data flow. Implement end-to-end tests that simulate complete user workflows, such as creating a task, expanding it, and updating its status. Include tests for error scenarios, recovery processes, and handling large numbers of tasks.
 ### Details:
 

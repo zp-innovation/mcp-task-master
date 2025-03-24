@@ -375,7 +375,7 @@ function generateTaskFiles(tasksPath, outputDir) {
       
       // Format dependencies with their status
       if (task.dependencies && task.dependencies.length > 0) {
-        content += `# Dependencies: ${formatDependenciesWithStatus(task.dependencies, data.tasks)}\n`;
+        content += `# Dependencies: ${formatDependenciesWithStatus(task.dependencies, data.tasks, false)}\n`;
       } else {
         content += '# Dependencies: None\n';
       }
@@ -406,17 +406,8 @@ function generateTaskFiles(tasksPath, outputDir) {
                 // Handle numeric dependencies to other subtasks
                 const foundSubtask = task.subtasks.find(st => st.id === depId);
                 if (foundSubtask) {
-                  const isDone = foundSubtask.status === 'done' || foundSubtask.status === 'completed';
-                  const isInProgress = foundSubtask.status === 'in-progress';
-                  
-                  // Use consistent color formatting instead of emojis
-                  if (isDone) {
-                    return chalk.green.bold(`${task.id}.${depId}`);
-                  } else if (isInProgress) {
-                    return chalk.hex('#FFA500').bold(`${task.id}.${depId}`);
-                  } else {
-                    return chalk.red.bold(`${task.id}.${depId}`);
-                  }
+                  // Just return the plain ID format without any color formatting
+                  return `${task.id}.${depId}`;
                 }
               }
               return depId.toString();

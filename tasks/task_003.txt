@@ -1,7 +1,7 @@
 # Task ID: 3
 # Title: Implement Basic Task Operations
 # Status: done
-# Dependencies: ✅ 1 (done), ✅ 2 (done)
+# Dependencies: 1, 2
 # Priority: high
 # Description: Create core functionality for managing tasks including listing, creating, updating, and deleting tasks.
 # Details:
@@ -25,31 +25,31 @@ Test each operation with valid and invalid inputs. Verify that dependencies are 
 
 
 ## 2. Develop Task Creation Functionality [done]
-### Dependencies: 1 (done)
+### Dependencies: 3.1
 ### Description: Implement a 'create' command in the CLI that allows users to add new tasks to the tasks.json file. Prompt for required fields (title, description, priority) and optional fields (dependencies, details, test strategy). Validate input and assign a unique ID to the new task.
 ### Details:
 
 
 ## 3. Implement Task Update Operations [done]
-### Dependencies: 1 (done), 2 (done)
+### Dependencies: 3.1, 3.2
 ### Description: Create an 'update' command that allows modification of existing task properties. Implement options to update individual fields or enter an interactive mode for multiple updates. Ensure that updates maintain data integrity, especially for dependencies.
 ### Details:
 
 
 ## 4. Develop Task Deletion Functionality [done]
-### Dependencies: 1 (done), 2 (done), 3 (done)
+### Dependencies: 3.1, 3.2, 3.3
 ### Description: Implement a 'delete' command to remove tasks from tasks.json. Include safeguards against deleting tasks with dependencies and provide a force option to override. Update any tasks that had the deleted task as a dependency.
 ### Details:
 
 
 ## 5. Implement Task Status Management [done]
-### Dependencies: 1 (done), 2 (done), 3 (done)
+### Dependencies: 3.1, 3.2, 3.3
 ### Description: Create a 'status' command to change the status of tasks (pending/done/deferred). Implement logic to handle status changes, including updating dependent tasks if necessary. Add a batch mode for updating multiple task statuses at once.
 ### Details:
 
 
 ## 6. Develop Task Dependency and Priority Management [done]
-### Dependencies: 1 (done), 2 (done), 3 (done)
+### Dependencies: 3.1, 3.2, 3.3
 ### Description: Implement 'dependency' and 'priority' commands to manage task relationships and importance. Create functions to add/remove dependencies and change priorities. Ensure the system prevents circular dependencies and maintains consistent priority levels.
 ### Details:
 

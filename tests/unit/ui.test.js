@@ -75,39 +75,57 @@ describe('UI Module', () => {
   });
 
   describe('getStatusWithColor function', () => {
-    test('should return done status in green', () => {
+    test('should return done status with emoji for console output', () => {
       const result = getStatusWithColor('done');
       expect(result).toMatch(/done/);
       expect(result).toContain('✅');
     });
 
-    test('should return pending status in yellow', () => {
+    test('should return pending status with emoji for console output', () => {
       const result = getStatusWithColor('pending');
       expect(result).toMatch(/pending/);
       expect(result).toContain('⏱️');
     });
 
-    test('should return deferred status in gray', () => {
+    test('should return deferred status with emoji for console output', () => {
       const result = getStatusWithColor('deferred');
       expect(result).toMatch(/deferred/);
       expect(result).toContain('⏱️');
     });
 
-    test('should return in-progress status in cyan', () => {
+    test('should return in-progress status with emoji for console output', () => {
       const result = getStatusWithColor('in-progress');
       expect(result).toMatch(/in-progress/);
       expect(result).toContain('🔄');
     });
 
-    test('should return unknown status in red', () => {
+    test('should return unknown status with emoji for console output', () => {
       const result = getStatusWithColor('unknown');
       expect(result).toMatch(/unknown/);
       expect(result).toContain('❌');
     });
+    
+    test('should use simple icons when forTable is true', () => {
+      const doneResult = getStatusWithColor('done', true);
+      expect(doneResult).toMatch(/done/);
+      expect(doneResult).toContain('✓');
+      
+      const pendingResult = getStatusWithColor('pending', true);
+      expect(pendingResult).toMatch(/pending/);
+      expect(pendingResult).toContain('○');
+      
+      const inProgressResult = getStatusWithColor('in-progress', true);
+      expect(inProgressResult).toMatch(/in-progress/);
+      expect(inProgressResult).toContain('►');
+      
+      const deferredResult = getStatusWithColor('deferred', true);
+      expect(deferredResult).toMatch(/deferred/);
+      expect(deferredResult).toContain('x');
+    });
   });
 
   describe('formatDependenciesWithStatus function', () => {
-    test('should format dependencies with status indicators', () => {
+    test('should format dependencies as plain IDs when forConsole is false (default)', () => {
       const dependencies = [1, 2, 3];
       const allTasks = [
         { id: 1, status: 'done' },
@@ -117,7 +135,28 @@ describe('UI Module', () => {
 
       const result = formatDependenciesWithStatus(dependencies, allTasks);
       
-      expect(result).toBe('✅ 1 (done), ⏱️ 2 (pending), ⏱️ 3 (deferred)');
+      // With recent changes, we expect just plain IDs when forConsole is false
+      expect(result).toBe('1, 2, 3');
+    });
+
+    test('should format dependencies with status indicators when forConsole is true', () => {
+      const dependencies = [1, 2, 3];
+      const allTasks = [
+        { id: 1, status: 'done' },
+        { id: 2, status: 'pending' },
+        { id: 3, status: 'deferred' }
+      ];
+      
+      const result = formatDependenciesWithStatus(dependencies, allTasks, true);
+      
+      // We can't test for exact color formatting due to our chalk mocks
+      // Instead, test that the result contains all the expected IDs
+      expect(result).toContain('1');
+      expect(result).toContain('2');
+      expect(result).toContain('3');
+      
+      // Test that it's a comma-separated list
+      expect(result.split(', ').length).toBe(3);
     });
 
     test('should return "None" for empty dependencies', () => {
@@ -132,7 +171,7 @@ describe('UI Module', () => {
       ];
 
       const result = formatDependenciesWithStatus(dependencies, allTasks);
-      expect(result).toBe('✅ 1 (done), 999 (Not found)');
+      expect(result).toBe('1, 999 (Not found)');
     });
   });
 

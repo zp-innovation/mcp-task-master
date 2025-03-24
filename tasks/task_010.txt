@@ -1,7 +1,7 @@
 # Task ID: 10
 # Title: Create Research-Backed Subtask Generation
 # Status: done
-# Dependencies: ✅ 7 (done), ✅ 9 (done)
+# Dependencies: 7, 9
 # Priority: low
 # Description: Enhance subtask generation with research capabilities from Perplexity API.
 # Details:
@@ -29,25 +29,25 @@ Compare subtasks generated with and without research backing. Verify that resear
 
 
 ## 3. Develop Context Enrichment Pipeline [done]
-### Dependencies: 2 (done)
+### Dependencies: 10.2
 ### Description: Create a pipeline that processes research results and enriches the task context with relevant information. This should include filtering irrelevant information, organizing research findings by category (tools, libraries, best practices, etc.), and formatting the enriched context for use in subtask generation. Implement a scoring mechanism to prioritize the most relevant research findings.
 ### Details:
 
 
 ## 4. Implement Domain-Specific Knowledge Incorporation [done]
-### Dependencies: 3 (done)
+### Dependencies: 10.3
 ### Description: Develop a system to incorporate domain-specific knowledge into the subtask generation process. This should include identifying key domain concepts, technical requirements, and industry standards from the research results. Create a knowledge base structure that organizes domain information and can be referenced during subtask generation.
 ### Details:
 
 
 ## 5. Enhance Subtask Generation with Technical Details [done]
-### Dependencies: 3 (done), 4 (done)
+### Dependencies: 10.3, 10.4
 ### Description: Extend the existing subtask generation functionality to incorporate research findings and produce more technically detailed subtasks. This includes modifying the Claude prompt templates to leverage the enriched context, implementing specific sections for technical approach, implementation notes, and potential challenges. Ensure generated subtasks include concrete technical details rather than generic steps.
 ### Details:
 
 
 ## 6. Implement Reference and Resource Inclusion [done]
-### Dependencies: 3 (done), 5 (done)
+### Dependencies: 10.3, 10.5
 ### Description: Create a system to include references to relevant libraries, tools, documentation, and other resources in generated subtasks. This should extract specific references from research results, validate their relevance, and format them as actionable links or citations within subtasks. Implement a verification step to ensure referenced resources are current and applicable.
 ### Details:
 

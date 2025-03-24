@@ -1,7 +1,7 @@
 # Task ID: 15
 # Title: Optimize Agent Integration with Cursor and dev.js Commands
 # Status: done
-# Dependencies: ✅ 2 (done), ✅ 14 (done)
+# Dependencies: 2, 14
 # Priority: medium
 # Description: Document and enhance existing agent interaction patterns through Cursor rules and dev.js commands.
 # Details:
@@ -29,25 +29,25 @@ Test the enhanced commands with AI agents to verify they can correctly interpret
 
 
 ## 3. Optimize Command Responses for Agent Consumption [done]
-### Dependencies: 2 (done)
+### Dependencies: 15.2
 ### Description: Refine the output format of existing commands to ensure they are easily parseable by AI agents. Focus on consistent, structured outputs that agents can reliably interpret without requiring a separate parsing system.
 ### Details:
 
 
 ## 4. Improve Agent Workflow Documentation in Cursor Rules [done]
-### Dependencies: 1 (done), 3 (done)
+### Dependencies: 15.1, 15.3
 ### Description: Enhance the agent workflow documentation in dev_workflow.mdc and cursor_rules.mdc to provide clear guidance on how agents should interact with the task system. Include example interactions and best practices for agents.
 ### Details:
 
 
 ## 5. Add Agent-Specific Features to Existing Commands [done]
-### Dependencies: 2 (done)
+### Dependencies: 15.2
 ### Description: Identify and implement any missing agent-specific features in the existing command system. This may include additional flags, parameters, or output formats that are particularly useful for agent interactions.
 ### Details:
 
 
 ## 6. Create Agent Usage Examples and Patterns [done]
-### Dependencies: 3 (done), 4 (done)
+### Dependencies: 15.3, 15.4
 ### Description: Develop a set of example interactions and usage patterns that demonstrate how agents should effectively use the task system. Include these examples in the documentation to guide future agent implementations.
 ### Details:
 

@@ -153,11 +153,13 @@ program
   .option('-f, --file <file>', 'Path to the tasks file', 'tasks/tasks.json')
   .option('--from <id>', 'Task ID to start updating from', '1')
   .option('-p, --prompt <text>', 'Prompt explaining the changes or new context (required)')
+  .option('-r, --research', 'Use Perplexity AI for research-backed task updates')
   .action((options) => {
     const args = ['update'];
     if (options.file) args.push('--file', options.file);
     if (options.from) args.push('--from', options.from);
     if (options.prompt) args.push('--prompt', options.prompt);
+    if (options.research) args.push('--research');
     runDevScript(args);
   });
 
@@ -317,6 +319,7 @@ program
     runDevScript(args);
   });
 
+// Parse the command line arguments
 program.parse(process.argv);
 
 // Show help if no command was provided (just 'task-master' with no args)

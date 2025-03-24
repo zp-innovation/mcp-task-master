@@ -226,6 +226,11 @@ describe('Feature or Function Name', () => {
   - Mock console output and verify correct formatting
   - Test conditional output logic
   - When testing strings with emojis or formatting, use `toContain()` or `toMatch()` rather than exact `toBe()` comparisons
+  - For functions with different behavior modes (e.g., `forConsole`, `forTable` parameters), create separate tests for each mode
+  - Test the structure of formatted output (e.g., check that it's a comma-separated list with the right number of items) rather than exact string matching
+  - When testing chalk-formatted output, remember that strict equality comparison (`toBe()`) can fail even when the visible output looks identical
+  - Consider using more flexible assertions like checking for the presence of key elements when working with styled text
+  - Mock chalk functions to return the input text to make testing easier while still verifying correct function calls
 
 ## Test Quality Guidelines
 

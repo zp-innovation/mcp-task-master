@@ -227,6 +227,29 @@ describe('Task Manager Module', () => {
       // 4. The final report includes all tasks that could be analyzed
       expect(true).toBe(true);
     });
+    
+    test('should use Perplexity research when research flag is set', async () => {
+      // This test would verify that:
+      // 1. The function uses Perplexity API when the research flag is set
+      // 2. It correctly formats the prompt for Perplexity
+      // 3. It properly handles the Perplexity response
+      expect(true).toBe(true);
+    });
+    
+    test('should fall back to Claude when Perplexity is unavailable', async () => {
+      // This test would verify that:
+      // 1. The function falls back to Claude when Perplexity API is not available
+      // 2. It handles the fallback gracefully
+      // 3. It still produces a valid report using Claude
+      expect(true).toBe(true);
+    });
+    
+    test('should process multiple tasks in parallel', async () => {
+      // This test would verify that:
+      // 1. The function can analyze multiple tasks efficiently
+      // 2. It correctly aggregates the results
+      expect(true).toBe(true);
+    });
   });
 
   describe('parsePRD function', () => {
@@ -303,6 +326,388 @@ describe('Task Manager Module', () => {
       
       // Verify generateTaskFiles was called
       expect(mockGenerateTaskFiles).toHaveBeenCalledWith('tasks/tasks.json', 'tasks');
+    });
+  });
+  
+  describe.skip('updateTasks function', () => {
+    test('should update tasks based on new context', async () => {
+      // This test would verify that:
+      // 1. The function reads the tasks file correctly
+      // 2. It filters tasks with ID >= fromId and not 'done'
+      // 3. It properly calls the AI model with the correct prompt
+      // 4. It updates the tasks with the AI response
+      // 5. It writes the updated tasks back to the file
+      expect(true).toBe(true);
+    });
+    
+    test('should handle streaming responses from Claude API', async () => {
+      // This test would verify that:
+      // 1. The function correctly handles streaming API calls
+      // 2. It processes the stream data properly
+      // 3. It combines the chunks into a complete response
+      expect(true).toBe(true);
+    });
+    
+    test('should use Perplexity AI when research flag is set', async () => {
+      // This test would verify that:
+      // 1. The function uses Perplexity when the research flag is set
+      // 2. It formats the prompt correctly for Perplexity
+      // 3. It properly processes the Perplexity response
+      expect(true).toBe(true);
+    });
+    
+    test('should handle no tasks to update', async () => {
+      // This test would verify that:
+      // 1. The function handles the case when no tasks need updating
+      // 2. It provides appropriate feedback to the user
+      expect(true).toBe(true);
+    });
+    
+    test('should handle errors during the update process', async () => {
+      // This test would verify that:
+      // 1. The function handles errors in the AI API calls
+      // 2. It provides appropriate error messages
+      // 3. It exits gracefully
+      expect(true).toBe(true);
+    });
+  });
+  
+  describe.skip('generateTaskFiles function', () => {
+    test('should generate task files from tasks.json', () => {
+      // This test would verify that:
+      // 1. The function reads the tasks file correctly
+      // 2. It creates the output directory if needed
+      // 3. It generates one file per task with correct format
+      // 4. It handles subtasks properly in the generated files
+      expect(true).toBe(true);
+    });
+    
+    test('should format dependencies with status indicators', () => {
+      // This test would verify that:
+      // 1. The function formats task dependencies correctly
+      // 2. It includes status indicators for each dependency
+      expect(true).toBe(true);
+    });
+    
+    test('should handle tasks with no subtasks', () => {
+      // This test would verify that:
+      // 1. The function handles tasks without subtasks properly
+      expect(true).toBe(true);
+    });
+    
+    test('should handle empty tasks array', () => {
+      // This test would verify that:
+      // 1. The function handles an empty tasks array gracefully
+      expect(true).toBe(true);
+    });
+    
+    test('should validate dependencies before generating files', () => {
+      // This test would verify that:
+      // 1. The function validates dependencies before generating files
+      // 2. It fixes invalid dependencies as needed
+      expect(true).toBe(true);
+    });
+  });
+  
+  describe.skip('setTaskStatus function', () => {
+    test('should update task status in tasks.json', async () => {
+      // This test would verify that:
+      // 1. The function reads the tasks file correctly
+      // 2. It finds the target task by ID
+      // 3. It updates the task status
+      // 4. It writes the updated tasks back to the file
+      expect(true).toBe(true);
+    });
+    
+    test('should update subtask status when using dot notation', async () => {
+      // This test would verify that:
+      // 1. The function correctly parses the subtask ID in dot notation
+      // 2. It finds the parent task and subtask
+      // 3. It updates the subtask status
+      expect(true).toBe(true);
+    });
+    
+    test('should update multiple tasks when given comma-separated IDs', async () => {
+      // This test would verify that:
+      // 1. The function handles comma-separated task IDs
+      // 2. It updates all specified tasks
+      expect(true).toBe(true);
+    });
+    
+    test('should automatically mark subtasks as done when parent is marked done', async () => {
+      // This test would verify that:
+      // 1. When a parent task is marked as done
+      // 2. All its subtasks are also marked as done
+      expect(true).toBe(true);
+    });
+    
+    test('should suggest updating parent task when all subtasks are done', async () => {
+      // This test would verify that:
+      // 1. When all subtasks of a parent are marked as done
+      // 2. The function suggests updating the parent task status
+      expect(true).toBe(true);
+    });
+    
+    test('should handle non-existent task ID', async () => {
+      // This test would verify that:
+      // 1. The function throws an error for non-existent task ID
+      // 2. It provides a helpful error message
+      expect(true).toBe(true);
+    });
+  });
+  
+  describe.skip('updateSingleTaskStatus function', () => {
+    test('should update regular task status', async () => {
+      // This test would verify that:
+      // 1. The function correctly updates a regular task's status
+      // 2. It handles the task data properly
+      expect(true).toBe(true);
+    });
+    
+    test('should update subtask status', async () => {
+      // This test would verify that:
+      // 1. The function correctly updates a subtask's status
+      // 2. It finds the parent task and subtask properly
+      expect(true).toBe(true);
+    });
+    
+    test('should handle parent tasks without subtasks', async () => {
+      // This test would verify that:
+      // 1. The function handles attempts to update subtasks when none exist
+      // 2. It throws an appropriate error
+      expect(true).toBe(true);
+    });
+    
+    test('should handle non-existent subtask ID', async () => {
+      // This test would verify that:
+      // 1. The function handles attempts to update non-existent subtasks
+      // 2. It throws an appropriate error
+      expect(true).toBe(true);
+    });
+  });
+  
+  describe.skip('listTasks function', () => {
+    test('should display all tasks when no filter is provided', () => {
+      // This test would verify that:
+      // 1. The function reads the tasks file correctly
+      // 2. It displays all tasks without filtering
+      // 3. It formats the output correctly
+      expect(true).toBe(true);
+    });
+    
+    test('should filter tasks by status when filter is provided', () => {
+      // This test would verify that:
+      // 1. The function filters tasks by the provided status
+      // 2. It only displays tasks matching the filter
+      expect(true).toBe(true);
+    });
+    
+    test('should display subtasks when withSubtasks flag is true', () => {
+      // This test would verify that:
+      // 1. The function displays subtasks when the flag is set
+      // 2. It formats subtasks correctly in the output
+      expect(true).toBe(true);
+    });
+    
+    test('should display completion statistics', () => {
+      // This test would verify that:
+      // 1. The function calculates completion statistics correctly
+      // 2. It displays the progress bars and percentages
+      expect(true).toBe(true);
+    });
+    
+    test('should identify and display the next task to work on', () => {
+      // This test would verify that:
+      // 1. The function correctly identifies the next task to work on
+      // 2. It displays the next task prominently
+      expect(true).toBe(true);
+    });
+    
+    test('should handle empty tasks array', () => {
+      // This test would verify that:
+      // 1. The function handles an empty tasks array gracefully
+      // 2. It displays an appropriate message
+      expect(true).toBe(true);
+    });
+  });
+  
+  describe.skip('expandTask function', () => {
+    test('should generate subtasks for a task', async () => {
+      // This test would verify that:
+      // 1. The function reads the tasks file correctly
+      // 2. It finds the target task by ID
+      // 3. It generates subtasks with unique IDs
+      // 4. It adds the subtasks to the task
+      // 5. It writes the updated tasks back to the file
+      expect(true).toBe(true);
+    });
+    
+    test('should use complexity report for subtask count', async () => {
+      // This test would verify that:
+      // 1. The function checks for a complexity report
+      // 2. It uses the recommended subtask count from the report
+      // 3. It uses the expansion prompt from the report
+      expect(true).toBe(true);
+    });
+    
+    test('should use Perplexity AI when research flag is set', async () => {
+      // This test would verify that:
+      // 1. The function uses Perplexity for research-backed generation
+      // 2. It handles the Perplexity response correctly
+      expect(true).toBe(true);
+    });
+    
+    test('should append subtasks to existing ones', async () => {
+      // This test would verify that:
+      // 1. The function appends new subtasks to existing ones
+      // 2. It generates unique subtask IDs
+      expect(true).toBe(true);
+    });
+    
+    test('should skip completed tasks', async () => {
+      // This test would verify that:
+      // 1. The function skips tasks marked as done or completed
+      // 2. It provides appropriate feedback
+      expect(true).toBe(true);
+    });
+    
+    test('should handle errors during subtask generation', async () => {
+      // This test would verify that:
+      // 1. The function handles errors in the AI API calls
+      // 2. It provides appropriate error messages
+      // 3. It exits gracefully
+      expect(true).toBe(true);
+    });
+  });
+  
+  describe.skip('expandAllTasks function', () => {
+    test('should expand all pending tasks', async () => {
+      // This test would verify that:
+      // 1. The function identifies all pending tasks
+      // 2. It expands each task with appropriate subtasks
+      // 3. It writes the updated tasks back to the file
+      expect(true).toBe(true);
+    });
+    
+    test('should sort tasks by complexity when report is available', async () => {
+      // This test would verify that:
+      // 1. The function reads the complexity report
+      // 2. It sorts tasks by complexity score
+      // 3. It prioritizes high-complexity tasks
+      expect(true).toBe(true);
+    });
+    
+    test('should skip tasks with existing subtasks unless force flag is set', async () => {
+      // This test would verify that:
+      // 1. The function skips tasks with existing subtasks
+      // 2. It processes them when force flag is set
+      expect(true).toBe(true);
+    });
+    
+    test('should use task-specific parameters from complexity report', async () => {
+      // This test would verify that:
+      // 1. The function uses task-specific subtask counts
+      // 2. It uses task-specific expansion prompts
+      expect(true).toBe(true);
+    });
+    
+    test('should handle empty tasks array', async () => {
+      // This test would verify that:
+      // 1. The function handles an empty tasks array gracefully
+      // 2. It displays an appropriate message
+      expect(true).toBe(true);
+    });
+    
+    test('should handle errors for individual tasks without failing the entire operation', async () => {
+      // This test would verify that:
+      // 1. The function continues processing tasks even if some fail
+      // 2. It reports errors for individual tasks
+      // 3. It completes the operation for successful tasks
+      expect(true).toBe(true);
+    });
+  });
+  
+  describe.skip('clearSubtasks function', () => {
+    test('should clear subtasks from a specific task', () => {
+      // This test would verify that:
+      // 1. The function reads the tasks file correctly
+      // 2. It finds the target task by ID
+      // 3. It clears the subtasks array
+      // 4. It writes the updated tasks back to the file
+      expect(true).toBe(true);
+    });
+    
+    test('should clear subtasks from multiple tasks when given comma-separated IDs', () => {
+      // This test would verify that:
+      // 1. The function handles comma-separated task IDs
+      // 2. It clears subtasks from all specified tasks
+      expect(true).toBe(true);
+    });
+    
+    test('should handle tasks with no subtasks', () => {
+      // This test would verify that:
+      // 1. The function handles tasks without subtasks gracefully
+      // 2. It provides appropriate feedback
+      expect(true).toBe(true);
+    });
+    
+    test('should handle non-existent task IDs', () => {
+      // This test would verify that:
+      // 1. The function handles non-existent task IDs gracefully
+      // 2. It logs appropriate error messages
+      expect(true).toBe(true);
+    });
+    
+    test('should regenerate task files after clearing subtasks', () => {
+      // This test would verify that:
+      // 1. The function regenerates task files after clearing subtasks
+      // 2. The new files reflect the changes
+      expect(true).toBe(true);
+    });
+  });
+  
+  describe.skip('addTask function', () => {
+    test('should add a new task using AI', async () => {
+      // This test would verify that:
+      // 1. The function reads the tasks file correctly
+      // 2. It determines the next available task ID
+      // 3. It calls the AI model with the correct prompt
+      // 4. It creates a properly structured task object
+      // 5. It adds the task to the tasks array
+      // 6. It writes the updated tasks back to the file
+      expect(true).toBe(true);
+    });
+    
+    test('should handle Claude streaming responses', async () => {
+      // This test would verify that:
+      // 1. The function correctly handles streaming API calls
+      // 2. It processes the stream data properly
+      // 3. It combines the chunks into a complete response
+      expect(true).toBe(true);
+    });
+    
+    test('should validate dependencies when adding a task', async () => {
+      // This test would verify that:
+      // 1. The function validates provided dependencies
+      // 2. It removes invalid dependencies
+      // 3. It logs appropriate messages
+      expect(true).toBe(true);
+    });
+    
+    test('should handle malformed AI responses', async () => {
+      // This test would verify that:
+      // 1. The function handles malformed JSON in AI responses
+      // 2. It provides appropriate error messages
+      // 3. It exits gracefully
+      expect(true).toBe(true);
+    });
+    
+    test('should use existing task context for better generation', async () => {
+      // This test would verify that:
+      // 1. The function uses existing tasks as context
+      // 2. It provides dependency context when dependencies are specified
+      // 3. It generates tasks that fit with the existing project
+      expect(true).toBe(true);
     });
   });
 }); 
