@@ -38,79 +38,12 @@
       "description": "Create core functionality for managing tasks including listing, creating, updating, and deleting tasks.",
       "status": "done",
       "dependencies": [
-        1,
-        2
+        1
       ],
       "priority": "high",
       "details": "Implement the following task operations:\n- List tasks with filtering options\n- Create new tasks with required fields\n- Update existing task properties\n- Delete tasks\n- Change task status (pending/done/deferred)\n- Handle dependencies between tasks\n- Manage task priorities",
       "testStrategy": "Test each operation with valid and invalid inputs. Verify that dependencies are properly tracked and that status changes are reflected correctly in the tasks.json file.",
-      "subtasks": [
-        {
-          "id": 1,
-          "title": "Implement Task Listing with Filtering",
-          "description": "Create a function that retrieves tasks from the tasks.json file and implements filtering options. Use the Commander.js CLI to add a 'list' command with various filter flags (e.g., --status, --priority, --dependency). Implement sorting options for the list output.",
-          "status": "done",
-          "dependencies": [],
-          "acceptanceCriteria": "- 'list' command is available in the CLI with help documentation"
-        },
-        {
-          "id": 2,
-          "title": "Develop Task Creation Functionality",
-          "description": "Implement a 'create' command in the CLI that allows users to add new tasks to the tasks.json file. Prompt for required fields (title, description, priority) and optional fields (dependencies, details, test strategy). Validate input and assign a unique ID to the new task.",
-          "status": "done",
-          "dependencies": [
-            1
-          ],
-          "acceptanceCriteria": "- 'create' command is available with interactive prompts for task details"
-        },
-        {
-          "id": 3,
-          "title": "Implement Task Update Operations",
-          "description": "Create an 'update' command that allows modification of existing task properties. Implement options to update individual fields or enter an interactive mode for multiple updates. Ensure that updates maintain data integrity, especially for dependencies.",
-          "status": "done",
-          "dependencies": [
-            1,
-            2
-          ],
-          "acceptanceCriteria": "- 'update' command accepts a task ID and field-specific flags for quick updates"
-        },
-        {
-          "id": 4,
-          "title": "Develop Task Deletion Functionality",
-          "description": "Implement a 'delete' command to remove tasks from tasks.json. Include safeguards against deleting tasks with dependencies and provide a force option to override. Update any tasks that had the deleted task as a dependency.",
-          "status": "done",
-          "dependencies": [
-            1,
-            2,
-            3
-          ],
-          "acceptanceCriteria": "- 'delete' command removes the specified task from tasks.json"
-        },
-        {
-          "id": 5,
-          "title": "Implement Task Status Management",
-          "description": "Create a 'status' command to change the status of tasks (pending/done/deferred). Implement logic to handle status changes, including updating dependent tasks if necessary. Add a batch mode for updating multiple task statuses at once.",
-          "status": "done",
-          "dependencies": [
-            1,
-            2,
-            3
-          ],
-          "acceptanceCriteria": "- 'status' command changes task status correctly in tasks.json"
-        },
-        {
-          "id": 6,
-          "title": "Develop Task Dependency and Priority Management",
-          "description": "Implement 'dependency' and 'priority' commands to manage task relationships and importance. Create functions to add/remove dependencies and change priorities. Ensure the system prevents circular dependencies and maintains consistent priority levels.",
-          "status": "done",
-          "dependencies": [
-            1,
-            2,
-            3
-          ],
-          "acceptanceCriteria": "- 'dependency' command can add or remove task dependencies"
-        }
-      ]
+      "subtasks": []
     },
     {
       "id": 4,
@@ -653,7 +586,6 @@
       "status": "done",
       "dependencies": [
         1,
-        2,
         3,
         4,
         6
@@ -729,7 +661,6 @@
       "status": "done",
       "dependencies": [
         1,
-        2,
         3
       ],
       "priority": "medium",
@@ -862,7 +793,6 @@
       "description": "Document and enhance existing agent interaction patterns through Cursor rules and dev.js commands.",
       "status": "done",
       "dependencies": [
-        2,
         14
       ],
       "priority": "medium",
@@ -935,8 +865,7 @@
       "description": "Implement robust configuration handling with environment variables and .env files.",
       "status": "done",
       "dependencies": [
-        1,
-        2
+        1
       ],
       "priority": "high",
       "details": "Build configuration management including:\n- Environment variable handling\n- .env file support\n- Configuration validation\n- Sensible defaults with overrides\n- Create .env.example template\n- Add configuration documentation\n- Implement secure handling of API keys",
@@ -1017,7 +946,6 @@
       "description": "Create a flexible logging system with configurable levels and output formats.",
       "status": "done",
       "dependencies": [
-        2,
         16
       ],
       "priority": "medium",
@@ -1082,7 +1010,6 @@
       "status": "done",
       "dependencies": [
         1,
-        2,
         3,
         4,
         5,
@@ -1166,7 +1093,6 @@
       "status": "done",
       "dependencies": [
         1,
-        2,
         3,
         5,
         9,
@@ -1369,7 +1295,7 @@
       "id": 22,
       "title": "Create Comprehensive Test Suite for Task Master CLI",
       "description": "Develop a complete testing infrastructure for the Task Master CLI that includes unit, integration, and end-to-end tests to verify all core functionality and error handling.",
-      "status": "in-progress",
+      "status": "done",
       "dependencies": [
         21
       ],
@@ -1389,7 +1315,7 @@
           "id": 2,
           "title": "Implement Unit Tests for Core Components",
           "description": "Create a comprehensive set of unit tests for all utility functions, core logic components, and individual modules of the Task Master CLI. This includes tests for task creation, parsing, manipulation, data storage, retrieval, and formatting functions. Ensure all edge cases and error scenarios are covered.",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             1
           ],
@@ -1399,7 +1325,7 @@
           "id": 3,
           "title": "Develop Integration and End-to-End Tests",
           "description": "Create integration tests that verify the correct interaction between different components of the CLI, including command execution, option parsing, and data flow. Implement end-to-end tests that simulate complete user workflows, such as creating a task, expanding it, and updating its status. Include tests for error scenarios, recovery processes, and handling large numbers of tasks.",
-          "status": "pending",
+          "status": "deferred",
           "dependencies": [
             1,
             2
@@ -1410,58 +1336,289 @@
     },
     {
       "id": 23,
-      "title": "Implement MCP (Model Context Protocol) Server Functionality for Task Master",
-      "description": "Extend Task Master to function as an MCP server, allowing it to provide context management services to other applications following the Model Context Protocol specification.",
+      "title": "Implement MCP Server Functionality for Task Master using FastMCP",
+      "description": "Extend Task Master to function as an MCP server by leveraging FastMCP's JavaScript/TypeScript implementation for efficient context management services.",
       "status": "pending",
       "dependencies": [
         22
       ],
       "priority": "medium",
-      "details": "This task involves implementing the Model Context Protocol server capabilities within Task Master. The implementation should:\n\n1. Create a new module `mcp-server.js` that implements the core MCP server functionality\n2. Implement the required MCP endpoints:\n   - `/context` - For retrieving and updating context\n   - `/models` - For listing available models\n   - `/execute` - For executing operations with context\n3. Develop a context management system that can:\n   - Store and retrieve context data efficiently\n   - Handle context windowing and truncation when limits are reached\n   - Support context metadata and tagging\n4. Add authentication and authorization mechanisms for MCP clients\n5. Implement proper error handling and response formatting according to MCP specifications\n6. Create configuration options in Task Master to enable/disable the MCP server functionality\n7. Add documentation for how to use Task Master as an MCP server\n8. Ensure the implementation is compatible with existing MCP clients\n9. Optimize for performance, especially for context retrieval operations\n10. Add logging for MCP server operations\n\nThe implementation should follow RESTful API design principles and should be able to handle concurrent requests from multiple clients.",
-      "testStrategy": "Testing for the MCP server functionality should include:\n\n1. Unit tests:\n   - Test each MCP endpoint handler function independently\n   - Verify context storage and retrieval mechanisms\n   - Test authentication and authorization logic\n   - Validate error handling for various failure scenarios\n\n2. Integration tests:\n   - Set up a test MCP server instance\n   - Test complete request/response cycles for each endpoint\n   - Verify context persistence across multiple requests\n   - Test with various payload sizes and content types\n\n3. Compatibility tests:\n   - Test with existing MCP client libraries\n   - Verify compliance with the MCP specification\n   - Ensure backward compatibility with any MCP versions supported\n\n4. Performance tests:\n   - Measure response times for context operations with various context sizes\n   - Test concurrent request handling\n   - Verify memory usage remains within acceptable limits during extended operation\n\n5. Security tests:\n   - Verify authentication mechanisms cannot be bypassed\n   - Test for common API vulnerabilities (injection, CSRF, etc.)\n\nAll tests should be automated and included in the CI/CD pipeline. Documentation should include examples of how to test the MCP server functionality manually using tools like curl or Postman."
+      "details": "This task involves implementing the Model Context Protocol server capabilities within Task Master using FastMCP. The implementation should:\n\n1. Use FastMCP to create the MCP server module (`mcp-server.ts` or equivalent)\n2. Implement the required MCP endpoints using FastMCP:\n   - `/context` - For retrieving and updating context\n   - `/models` - For listing available models\n   - `/execute` - For executing operations with context\n3. Utilize FastMCP's built-in features for context management, including:\n   - Efficient context storage and retrieval\n   - Context windowing and truncation\n   - Metadata and tagging support\n4. Add authentication and authorization mechanisms using FastMCP capabilities\n5. Implement error handling and response formatting as per MCP specifications\n6. Configure Task Master to enable/disable MCP server functionality via FastMCP settings\n7. Add documentation on using Task Master as an MCP server with FastMCP\n8. Ensure compatibility with existing MCP clients by adhering to FastMCP's compliance features\n9. Optimize performance using FastMCP tools, especially for context retrieval operations\n10. Add logging for MCP server operations using FastMCP's logging utilities\n\nThe implementation should follow RESTful API design principles and leverage FastMCP's concurrency handling for multiple client requests. Consider using TypeScript for better type safety and integration with FastMCP[1][2].",
+      "testStrategy": "Testing for the MCP server functionality should include:\n\n1. Unit tests:\n   - Test each MCP endpoint handler function independently using FastMCP\n   - Verify context storage and retrieval mechanisms provided by FastMCP\n   - Test authentication and authorization logic\n   - Validate error handling for various failure scenarios\n\n2. Integration tests:\n   - Set up a test MCP server instance using FastMCP\n   - Test complete request/response cycles for each endpoint\n   - Verify context persistence across multiple requests\n   - Test with various payload sizes and content types\n\n3. Compatibility tests:\n   - Test with existing MCP client libraries\n   - Verify compliance with the MCP specification\n   - Ensure backward compatibility with any MCP versions supported by FastMCP\n\n4. Performance tests:\n   - Measure response times for context operations with various context sizes\n   - Test concurrent request handling using FastMCP's concurrency tools\n   - Verify memory usage remains within acceptable limits during extended operation\n\n5. Security tests:\n   - Verify authentication mechanisms cannot be bypassed\n   - Test for common API vulnerabilities (injection, CSRF, etc.)\n\nAll tests should be automated and included in the CI/CD pipeline. Documentation should include examples of how to test the MCP server functionality manually using tools like curl or Postman."
     },
     {
       "id": 24,
       "title": "Implement AI-Powered Test Generation Command",
-      "description": "Create a new 'generate-test' command that leverages AI to automatically produce Jest test files for tasks based on their descriptions and subtasks.",
+      "description": "Create a new 'generate-test' command in Task Master that leverages AI to automatically produce Jest test files for tasks based on their descriptions and subtasks, utilizing Claude API for AI integration.",
       "status": "pending",
       "dependencies": [
         22
       ],
       "priority": "high",
-      "details": "Implement a new command in the Task Master CLI that generates comprehensive Jest test files for tasks. The command should be callable as 'task-master generate-test --id=1' and should:\n\n1. Accept a task ID parameter to identify which task to generate tests for\n2. Retrieve the task and its subtasks from the task store\n3. Analyze the task description, details, and subtasks to understand implementation requirements\n4. Construct an appropriate prompt for an AI service (e.g., OpenAI API) that requests generation of Jest tests\n5. Process the AI response to create a well-formatted test file named 'task_XXX.test.js' where XXX is the zero-padded task ID\n6. Include appropriate test cases that cover the main functionality described in the task\n7. Generate mocks for external dependencies identified in the task description\n8. Create assertions that validate the expected behavior\n9. Handle both parent tasks and subtasks appropriately (for subtasks, name the file 'task_XXX_YYY.test.js' where YYY is the subtask ID)\n10. Include error handling for API failures, invalid task IDs, etc.\n11. Add appropriate documentation for the command in the help system\n\nThe implementation should utilize the existing AI service integration in the codebase and maintain consistency with the current command structure and error handling patterns.",
-      "testStrategy": "Testing for this feature should include:\n\n1. Unit tests for the command handler function to verify it correctly processes arguments and options\n2. Mock tests for the AI service integration to ensure proper prompt construction and response handling\n3. Integration tests that verify the end-to-end flow using a mock AI response\n4. Tests for error conditions including:\n   - Invalid task IDs\n   - Network failures when contacting the AI service\n   - Malformed AI responses\n   - File system permission issues\n5. Verification that generated test files follow Jest conventions and can be executed\n6. Tests for both parent task and subtask handling\n7. Manual verification of the quality of generated tests by running them against actual task implementations\n\nCreate a test fixture with sample tasks of varying complexity to evaluate the test generation capabilities across different scenarios. The tests should verify that the command outputs appropriate success/error messages to the console and creates files in the expected location with proper content structure.",
+      "details": "Implement a new command in the Task Master CLI that generates comprehensive Jest test files for tasks. The command should be callable as 'task-master generate-test --id=1' and should:\n\n1. Accept a task ID parameter to identify which task to generate tests for\n2. Retrieve the task and its subtasks from the task store\n3. Analyze the task description, details, and subtasks to understand implementation requirements\n4. Construct an appropriate prompt for the AI service using Claude API\n5. Process the AI response to create a well-formatted test file named 'task_XXX.test.ts' where XXX is the zero-padded task ID\n6. Include appropriate test cases that cover the main functionality described in the task\n7. Generate mocks for external dependencies identified in the task description\n8. Create assertions that validate the expected behavior\n9. Handle both parent tasks and subtasks appropriately (for subtasks, name the file 'task_XXX_YYY.test.ts' where YYY is the subtask ID)\n10. Include error handling for API failures, invalid task IDs, etc.\n11. Add appropriate documentation for the command in the help system\n\nThe implementation should utilize the Claude API for AI service integration and maintain consistency with the current command structure and error handling patterns. Consider using TypeScript for better type safety and integration with the Claude API.",
+      "testStrategy": "Testing for this feature should include:\n\n1. Unit tests for the command handler function to verify it correctly processes arguments and options\n2. Mock tests for the Claude API integration to ensure proper prompt construction and response handling\n3. Integration tests that verify the end-to-end flow using a mock Claude API response\n4. Tests for error conditions including:\n   - Invalid task IDs\n   - Network failures when contacting the AI service\n   - Malformed AI responses\n   - File system permission issues\n5. Verification that generated test files follow Jest conventions and can be executed\n6. Tests for both parent task and subtask handling\n7. Manual verification of the quality of generated tests by running them against actual task implementations\n\nCreate a test fixture with sample tasks of varying complexity to evaluate the test generation capabilities across different scenarios. The tests should verify that the command outputs appropriate success/error messages to the console and creates files in the expected location with proper content structure.",
       "subtasks": [
         {
           "id": 1,
           "title": "Create command structure for 'generate-test'",
-          "description": "Implement the basic structure for the 'generate-test' command, including command registration, parameter validation, and help documentation",
+          "description": "Implement the basic structure for the 'generate-test' command, including command registration, parameter validation, and help documentation.",
           "dependencies": [],
-          "details": "Implementation steps:\n1. Create a new file `src/commands/generate-test.js`\n2. Implement the command structure following the pattern of existing commands\n3. Register the new command in the CLI framework\n4. Add command options for task ID (--id=X) parameter\n5. Implement parameter validation to ensure a valid task ID is provided\n6. Add help documentation for the command\n7. Create the basic command flow that retrieves the task from the task store\n8. Implement error handling for invalid task IDs and other basic errors\n\nTesting approach:\n- Test command registration\n- Test parameter validation (missing ID, invalid ID format)\n- Test error handling for non-existent task IDs\n- Test basic command flow with a mock task store",
+          "details": "Implementation steps:\n1. Create a new file `src/commands/generate-test.ts`\n2. Implement the command structure following the pattern of existing commands\n3. Register the new command in the CLI framework\n4. Add command options for task ID (--id=X) parameter\n5. Implement parameter validation to ensure a valid task ID is provided\n6. Add help documentation for the command\n7. Create the basic command flow that retrieves the task from the task store\n8. Implement error handling for invalid task IDs and other basic errors\n\nTesting approach:\n- Test command registration\n- Test parameter validation (missing ID, invalid ID format)\n- Test error handling for non-existent task IDs\n- Test basic command flow with a mock task store",
           "status": "pending",
           "parentTaskId": 24
         },
         {
           "id": 2,
-          "title": "Implement AI prompt construction and API integration",
-          "description": "Develop the logic to analyze tasks, construct appropriate AI prompts, and interact with the AI service to generate test content",
+          "title": "Implement AI prompt construction and FastMCP integration",
+          "description": "Develop the logic to analyze tasks, construct appropriate AI prompts, and interact with the AI service using FastMCP to generate test content.",
           "dependencies": [
             1
           ],
-          "details": "Implementation steps:\n1. Create a utility function to analyze task descriptions and subtasks for test requirements\n2. Implement a prompt builder that formats task information into an effective AI prompt\n3. The prompt should request Jest test generation with specifics about mocking dependencies and creating assertions\n4. Integrate with the existing AI service in the codebase to send the prompt\n5. Process the AI response to extract the generated test code\n6. Implement error handling for API failures, rate limits, and malformed responses\n7. Add appropriate logging for the AI interaction process\n\nTesting approach:\n- Test prompt construction with various task types\n- Test AI service integration with mocked responses\n- Test error handling for API failures\n- Test response processing with sample AI outputs",
+          "details": "Implementation steps:\n1. Create a utility function to analyze task descriptions and subtasks for test requirements\n2. Implement a prompt builder that formats task information into an effective AI prompt\n3. Use FastMCP to send the prompt and receive the response\n4. Process the FastMCP response to extract the generated test code\n5. Implement error handling for FastMCP failures, rate limits, and malformed responses\n6. Add appropriate logging for the FastMCP interaction process\n\nTesting approach:\n- Test prompt construction with various task types\n- Test FastMCP integration with mocked responses\n- Test error handling for FastMCP failures\n- Test response processing with sample FastMCP outputs",
           "status": "pending",
           "parentTaskId": 24
         },
         {
           "id": 3,
           "title": "Implement test file generation and output",
-          "description": "Create functionality to format AI-generated tests into proper Jest test files and save them to the appropriate location",
+          "description": "Create functionality to format AI-generated tests into proper Jest test files and save them to the appropriate location.",
           "dependencies": [
             2
           ],
-          "details": "Implementation steps:\n1. Create a utility to format the AI response into a well-structured Jest test file\n2. Implement naming logic for test files (task_XXX.test.js for parent tasks, task_XXX_YYY.test.js for subtasks)\n3. Add logic to determine the appropriate file path for saving the test\n4. Implement file system operations to write the test file\n5. Add validation to ensure the generated test follows Jest conventions\n6. Implement formatting of the test file for consistency with project coding standards\n7. Add user feedback about successful test generation and file location\n8. Implement handling for both parent tasks and subtasks\n\nTesting approach:\n- Test file naming logic for various task/subtask combinations\n- Test file content formatting with sample AI outputs\n- Test file system operations with mocked fs module\n- Test the complete flow from command input to file output\n- Verify generated tests can be executed by Jest",
+          "details": "Implementation steps:\n1. Create a utility to format the FastMCP response into a well-structured Jest test file\n2. Implement naming logic for test files (task_XXX.test.ts for parent tasks, task_XXX_YYY.test.ts for subtasks)\n3. Add logic to determine the appropriate file path for saving the test\n4. Implement file system operations to write the test file\n5. Add validation to ensure the generated test follows Jest conventions\n6. Implement formatting of the test file for consistency with project coding standards\n7. Add user feedback about successful test generation and file location\n8. Implement handling for both parent tasks and subtasks\n\nTesting approach:\n- Test file naming logic for various task/subtask combinations\n- Test file content formatting with sample FastMCP outputs\n- Test file system operations with mocked fs module\n- Test the complete flow from command input to file output\n- Verify generated tests can be executed by Jest",
           "status": "pending",
           "parentTaskId": 24
+        }
+      ]
+    },
+    {
+      "id": 25,
+      "title": "Implement 'add-subtask' Command for Task Hierarchy Management",
+      "description": "Create a command-line interface command that allows users to manually add subtasks to existing tasks, establishing a parent-child relationship between tasks.",
+      "status": "done",
+      "dependencies": [
+        3
+      ],
+      "priority": "medium",
+      "details": "Implement the 'add-subtask' command that enables users to create hierarchical relationships between tasks. The command should:\n\n1. Accept parameters for the parent task ID and either the details for a new subtask or the ID of an existing task to convert to a subtask\n2. Validate that the parent task exists before proceeding\n3. If creating a new subtask, collect all necessary task information (title, description, due date, etc.)\n4. If converting an existing task, ensure it's not already a subtask of another task\n5. Update the data model to support parent-child relationships between tasks\n6. Modify the task storage mechanism to persist these relationships\n7. Ensure that when a parent task is marked complete, there's appropriate handling of subtasks (prompt user or provide options)\n8. Update the task listing functionality to display subtasks with appropriate indentation or visual hierarchy\n9. Implement proper error handling for cases like circular dependencies (a task cannot be a subtask of its own subtask)\n10. Document the command syntax and options in the help system",
+      "testStrategy": "Testing should verify both the functionality and edge cases of the subtask implementation:\n\n1. Unit tests:\n   - Test adding a new subtask to an existing task\n   - Test converting an existing task to a subtask\n   - Test validation logic for parent task existence\n   - Test prevention of circular dependencies\n   - Test error handling for invalid inputs\n\n2. Integration tests:\n   - Verify subtask relationships are correctly persisted to storage\n   - Verify subtasks appear correctly in task listings\n   - Test the complete workflow from adding a subtask to viewing it in listings\n\n3. Edge cases:\n   - Attempt to add a subtask to a non-existent parent\n   - Attempt to make a task a subtask of itself\n   - Attempt to create circular dependencies (A → B → A)\n   - Test with a deep hierarchy of subtasks (A → B → C → D)\n   - Test handling of subtasks when parent tasks are deleted\n   - Verify behavior when marking parent tasks as complete\n\n4. Manual testing:\n   - Verify command usability and clarity of error messages\n   - Test the command with various parameter combinations",
+      "subtasks": [
+        {
+          "id": 1,
+          "title": "Update Data Model to Support Parent-Child Task Relationships",
+          "description": "Modify the task data structure to support hierarchical relationships between tasks",
+          "dependencies": [],
+          "details": "1. Examine the current task data structure in scripts/modules/task-manager.js\n2. Add a 'parentId' field to the task object schema to reference parent tasks\n3. Add a 'subtasks' array field to store references to child tasks\n4. Update any relevant validation functions to account for these new fields\n5. Ensure serialization and deserialization of tasks properly handles these new fields\n6. Update the storage mechanism to persist these relationships\n7. Test by manually creating tasks with parent-child relationships and verifying they're saved correctly\n8. Write unit tests to verify the updated data model works as expected",
+          "status": "done",
+          "parentTaskId": 25
+        },
+        {
+          "id": 2,
+          "title": "Implement Core addSubtask Function in task-manager.js",
+          "description": "Create the core function that handles adding subtasks to parent tasks",
+          "dependencies": [
+            1
+          ],
+          "details": "1. Create a new addSubtask function in scripts/modules/task-manager.js\n2. Implement logic to validate that the parent task exists\n3. Add functionality to handle both creating new subtasks and converting existing tasks\n4. For new subtasks: collect task information and create a new task with parentId set\n5. For existing tasks: validate it's not already a subtask and update its parentId\n6. Add validation to prevent circular dependencies (a task cannot be a subtask of its own subtask)\n7. Update the parent task's subtasks array\n8. Ensure proper error handling with descriptive error messages\n9. Export the function for use by the command handler\n10. Write unit tests to verify all scenarios (new subtask, converting task, error cases)",
+          "status": "done",
+          "parentTaskId": 25
+        },
+        {
+          "id": 3,
+          "title": "Implement add-subtask Command in commands.js",
+          "description": "Create the command-line interface for the add-subtask functionality",
+          "dependencies": [
+            2
+          ],
+          "details": "1. Add a new command registration in scripts/modules/commands.js following existing patterns\n2. Define command syntax: 'add-subtask <parentId> [--task-id=<taskId> | --title=<title>]'\n3. Implement command handler that calls the addSubtask function from task-manager.js\n4. Add interactive prompts to collect required information when not provided as arguments\n5. Implement validation for command arguments\n6. Add appropriate success and error messages\n7. Document the command syntax and options in the help system\n8. Test the command with various input combinations\n9. Ensure the command follows the same patterns as other commands like add-dependency",
+          "status": "done",
+          "parentTaskId": 25
+        },
+        {
+          "id": 4,
+          "title": "Create Unit Test for add-subtask",
+          "description": "Develop comprehensive unit tests for the add-subtask functionality",
+          "dependencies": [
+            2,
+            3
+          ],
+          "details": "1. Create a test file in tests/unit/ directory for the add-subtask functionality\n2. Write tests for the addSubtask function in task-manager.js\n3. Test all key scenarios: adding new subtasks, converting existing tasks to subtasks\n4. Test error cases: non-existent parent task, circular dependencies, invalid input\n5. Use Jest mocks to isolate the function from file system operations\n6. Test the command handler in isolation using mock functions\n7. Ensure test coverage for all branches and edge cases\n8. Document the testing approach for future reference",
+          "status": "done",
+          "parentTaskId": 25
+        },
+        {
+          "id": 5,
+          "title": "Implement remove-subtask Command",
+          "description": "Create functionality to remove a subtask from its parent, following the same approach as add-subtask",
+          "dependencies": [
+            2,
+            3
+          ],
+          "details": "1. Create a removeSubtask function in scripts/modules/task-manager.js\n2. Implement logic to validate the subtask exists and is actually a subtask\n3. Add options to either delete the subtask completely or convert it to a standalone task\n4. Update the parent task's subtasks array to remove the reference\n5. If converting to standalone task, clear the parentId reference\n6. Implement the remove-subtask command in scripts/modules/commands.js following patterns from add-subtask\n7. Add appropriate validation and error messages\n8. Document the command in the help system\n9. Export the function in task-manager.js\n10. Ensure proper error handling for all scenarios",
+          "status": "done",
+          "parentTaskId": 25
+        }
+      ]
+    },
+    {
+      "id": 26,
+      "title": "Implement Context Foundation for AI Operations",
+      "description": "Implement the foundation for context integration in Task Master, enabling AI operations to leverage file-based context, cursor rules, and basic code context to improve generated outputs.",
+      "status": "pending",
+      "dependencies": [
+        5,
+        6,
+        7
+      ],
+      "priority": "high",
+      "details": "Create a Phase 1 foundation for context integration in Task Master that provides immediate practical value:\n\n1. Add `--context-file` Flag to AI Commands:\n   - Add a consistent `--context-file <file>` option to all AI-related commands (expand, update, add-task, etc.)\n   - Implement file reading functionality that loads content from the specified file\n   - Add content integration into Claude API prompts with appropriate formatting\n   - Handle error conditions such as file not found gracefully\n   - Update help documentation to explain the new option\n\n2. Implement Cursor Rules Integration for Context:\n   - Create a `--context-rules <rules>` option for all AI commands\n   - Implement functionality to extract content from specified .cursor/rules/*.mdc files\n   - Support comma-separated lists of rule names and \"all\" option\n   - Add validation and error handling for non-existent rules\n   - Include helpful examples in command help output\n\n3. Implement Basic Context File Extraction Utility:\n   - Create utility functions in utils.js for reading context from files\n   - Add proper error handling and logging\n   - Implement content validation to ensure reasonable size limits\n   - Add content truncation if files exceed token limits\n   - Create helper functions for formatting context additions properly\n\n4. Update Command Handler Logic:\n   - Modify command handlers to support the new context options\n   - Update prompt construction to incorporate context content\n   - Ensure backwards compatibility with existing commands\n   - Add logging for context inclusion to aid troubleshooting\n\nThe focus of this phase is to provide immediate value with straightforward implementations that enable users to include relevant context in their AI operations.",
+      "testStrategy": "Testing should verify that the context foundation works as expected and adds value:\n\n1. Functional Tests:\n   - Verify `--context-file` flag correctly reads and includes content from specified files\n   - Test that `--context-rules` correctly extracts and formats content from cursor rules\n   - Test with both existing and non-existent files/rules to verify error handling\n   - Verify content truncation works appropriately for large files\n\n2. Integration Tests:\n   - Test each AI-related command with context options\n   - Verify context is properly included in API calls to Claude\n   - Test combinations of multiple context options\n   - Verify help documentation includes the new options\n\n3. Usability Testing:\n   - Create test scenarios that show clear improvement in AI output quality with context\n   - Compare outputs with and without context to measure impact\n   - Document examples of effective context usage for the user documentation\n\n4. Error Handling:\n   - Test invalid file paths and rule names\n   - Test oversized context files\n   - Verify appropriate error messages guide users to correct usage\n\nThe testing focus should be on proving immediate value to users while ensuring robust error handling.",
+      "subtasks": [
+        {
+          "id": 1,
+          "title": "Implement --context-file Flag for AI Commands",
+          "description": "Add the --context-file <file> option to all AI-related commands and implement file reading functionality",
+          "details": "1. Update the contextOptions array in commands.js to include the --context-file option\\n2. Modify AI command action handlers to check for the context-file option\\n3. Implement file reading functionality that loads content from the specified file\\n4. Add content integration into Claude API prompts with appropriate formatting\\n5. Add error handling for file not found or permission issues\\n6. Update help documentation to explain the new option with examples",
+          "status": "pending",
+          "dependencies": [],
+          "parentTaskId": 26
+        },
+        {
+          "id": 2,
+          "title": "Implement --context Flag for AI Commands",
+          "description": "Add support for directly passing context in the command line",
+          "details": "1. Update AI command options to include a --context option\\n2. Modify action handlers to process context from command line\\n3. Sanitize and truncate long context inputs\\n4. Add content integration into Claude API prompts\\n5. Update help documentation to explain the new option with examples",
+          "status": "pending",
+          "dependencies": [],
+          "parentTaskId": 26
+        },
+        {
+          "id": 3,
+          "title": "Implement Cursor Rules Integration for Context",
+          "description": "Create a --context-rules option for all AI commands that extracts content from specified .cursor/rules/*.mdc files",
+          "details": "1. Add --context-rules <rules> option to all AI-related commands\\n2. Implement functionality to extract content from specified .cursor/rules/*.mdc files\\n3. Support comma-separated lists of rule names and 'all' option\\n4. Add validation and error handling for non-existent rules\\n5. Include helpful examples in command help output",
+          "status": "pending",
+          "dependencies": [],
+          "parentTaskId": 26
+        },
+        {
+          "id": 4,
+          "title": "Implement Basic Context File Extraction Utility",
+          "description": "Create utility functions for reading context from files with error handling and content validation",
+          "details": "1. Create utility functions in utils.js for reading context from files\\n2. Add proper error handling and logging for file access issues\\n3. Implement content validation to ensure reasonable size limits\\n4. Add content truncation if files exceed token limits\\n5. Create helper functions for formatting context additions properly\\n6. Document the utility functions with clear examples",
+          "status": "pending",
+          "dependencies": [],
+          "parentTaskId": 26
+        }
+      ]
+    },
+    {
+      "id": 27,
+      "title": "Implement Context Enhancements for AI Operations",
+      "description": "Enhance the basic context integration with more sophisticated code context extraction, task history awareness, and PRD integration to provide richer context for AI operations.",
+      "status": "pending",
+      "dependencies": [
+        26
+      ],
+      "priority": "high",
+      "details": "Building upon the foundational context implementation in Task #26, implement Phase 2 context enhancements:\n\n1. Add Code Context Extraction Feature:\n   - Create a `--context-code <pattern>` option for all AI commands\n   - Implement glob-based file matching to extract code from specified patterns\n   - Create intelligent code parsing to extract most relevant sections (function signatures, classes, exports)\n   - Implement token usage optimization by selecting key structural elements\n   - Add formatting for code context with proper file paths and syntax indicators\n\n2. Implement Task History Context:\n   - Add a `--context-tasks <ids>` option for AI commands\n   - Support comma-separated task IDs and a \"similar\" option to find related tasks\n   - Create functions to extract context from specified tasks or find similar tasks\n   - Implement formatting for task context with clear section markers\n   - Add validation and error handling for non-existent task IDs\n\n3. Add PRD Context Integration:\n   - Create a `--context-prd <file>` option for AI commands\n   - Implement PRD text extraction and intelligent summarization\n   - Add formatting for PRD context with appropriate section markers\n   - Integrate with the existing PRD parsing functionality from Task #6\n\n4. Improve Context Formatting and Integration:\n   - Create a standardized context formatting system\n   - Implement type-based sectioning for different context sources\n   - Add token estimation for different context types to manage total prompt size\n   - Enhance prompt templates to better integrate various context types\n\nThese enhancements will provide significantly richer context for AI operations, resulting in more accurate and relevant outputs while remaining practical to implement.",
+      "testStrategy": "Testing should verify the enhanced context functionality:\n\n1. Code Context Testing:\n   - Verify pattern matching works for different glob patterns\n   - Test code extraction with various file types and sizes\n   - Verify intelligent parsing correctly identifies important code elements\n   - Test token optimization by comparing full file extraction vs. optimized extraction\n   - Check code formatting in prompts sent to Claude API\n\n2. Task History Testing:\n   - Test with different combinations of task IDs\n   - Verify \"similar\" option correctly identifies relevant tasks\n   - Test with non-existent task IDs to ensure proper error handling\n   - Verify formatting and integration in prompts\n\n3. PRD Context Testing:\n   - Test with various PRD files of different sizes\n   - Verify summarization functions correctly when PRDs are too large\n   - Test integration with prompts and formatting\n\n4. Performance Testing:\n   - Measure the impact of context enrichment on command execution time\n   - Test with large code bases to ensure reasonable performance\n   - Verify token counting and optimization functions work as expected\n\n5. Quality Assessment:\n   - Compare AI outputs with Phase 1 vs. Phase 2 context to measure improvements\n   - Create test cases that specifically benefit from code context\n   - Create test cases that benefit from task history context\n\nFocus testing on practical use cases that demonstrate clear improvements in AI-generated outputs.",
+      "subtasks": [
+        {
+          "id": 1,
+          "title": "Implement Code Context Extraction Feature",
+          "description": "Create a --context-code <pattern> option for AI commands and implement glob-based file matching to extract relevant code sections",
+          "details": "",
+          "status": "pending",
+          "dependencies": [],
+          "parentTaskId": 27
+        },
+        {
+          "id": 2,
+          "title": "Implement Task History Context Integration",
+          "description": "Add a --context-tasks option for AI commands that supports finding and extracting context from specified or similar tasks",
+          "details": "",
+          "status": "pending",
+          "dependencies": [],
+          "parentTaskId": 27
+        },
+        {
+          "id": 3,
+          "title": "Add PRD Context Integration",
+          "description": "Implement a --context-prd option for AI commands that extracts and formats content from PRD files",
+          "details": "",
+          "status": "pending",
+          "dependencies": [],
+          "parentTaskId": 27
+        },
+        {
+          "id": 4,
+          "title": "Create Standardized Context Formatting System",
+          "description": "Implement a consistent formatting system for different context types with section markers and token optimization",
+          "details": "",
+          "status": "pending",
+          "dependencies": [],
+          "parentTaskId": 27
+        }
+      ]
+    },
+    {
+      "id": 28,
+      "title": "Implement Advanced ContextManager System",
+      "description": "Create a comprehensive ContextManager class to unify context handling with advanced features like context optimization, prioritization, and intelligent context selection.",
+      "status": "pending",
+      "dependencies": [
+        26,
+        27
+      ],
+      "priority": "high",
+      "details": "Building on Phase 1 and Phase 2 context implementations, develop Phase 3 advanced context management:\n\n1. Implement the ContextManager Class:\n   - Create a unified `ContextManager` class that encapsulates all context functionality\n   - Implement methods for gathering context from all supported sources\n   - Create a configurable context priority system to favor more relevant context types\n   - Add token management to ensure context fits within API limits\n   - Implement caching for frequently used context to improve performance\n\n2. Create Context Optimization Pipeline:\n   - Develop intelligent context optimization algorithms\n   - Implement type-based truncation strategies (code vs. text)\n   - Create relevance scoring to prioritize most useful context portions\n   - Add token budget allocation that divides available tokens among context types\n   - Implement dynamic optimization based on operation type\n\n3. Add Command Interface Enhancements:\n   - Create the `--context-all` flag to include all available context\n   - Add the `--context-max-tokens <tokens>` option to control token allocation\n   - Implement unified context options across all AI commands\n   - Add intelligent default values for different command types\n\n4. Integrate with AI Services:\n   - Update the AI service integration to use the ContextManager\n   - Create specialized context assembly for different AI operations\n   - Add post-processing to capture new context from AI responses\n   - Implement adaptive context selection based on operation success\n\n5. Add Performance Monitoring:\n   - Create context usage statistics tracking\n   - Implement logging for context selection decisions\n   - Add warnings for context token limits\n   - Create troubleshooting utilities for context-related issues\n\nThe ContextManager system should provide a powerful but easy-to-use interface for both users and developers, maintaining backward compatibility with earlier phases while adding substantial new capabilities.",
+      "testStrategy": "Testing should verify both the functionality and performance of the advanced context management:\n\n1. Unit Testing:\n   - Test all ContextManager class methods with various inputs\n   - Verify optimization algorithms maintain critical information\n   - Test caching mechanisms for correctness and efficiency\n   - Verify token allocation and budgeting functions\n   - Test each context source integration separately\n\n2. Integration Testing:\n   - Verify ContextManager integration with AI services\n   - Test with all AI-related commands\n   - Verify backward compatibility with existing context options\n   - Test context prioritization across multiple context types\n   - Verify logging and error handling\n\n3. Performance Testing:\n   - Benchmark context gathering and optimization times\n   - Test with large and complex context sources\n   - Measure impact of caching on repeated operations\n   - Verify memory usage remains acceptable\n   - Test with token limits of different sizes\n\n4. Quality Assessment:\n   - Compare AI outputs using Phase 3 vs. earlier context handling\n   - Measure improvements in context relevance and quality\n   - Test complex scenarios requiring multiple context types\n   - Quantify the impact on token efficiency\n\n5. User Experience Testing:\n   - Verify CLI options are intuitive and well-documented\n   - Test error messages are helpful for troubleshooting\n   - Ensure log output provides useful insights\n   - Test all convenience options like `--context-all`\n\nCreate automated test suites for regression testing of the complete context system.",
+      "subtasks": [
+        {
+          "id": 1,
+          "title": "Implement Core ContextManager Class Structure",
+          "description": "Create a unified ContextManager class that encapsulates all context functionality with methods for gathering context from supported sources",
+          "details": "",
+          "status": "pending",
+          "dependencies": [],
+          "parentTaskId": 28
+        },
+        {
+          "id": 2,
+          "title": "Develop Context Optimization Pipeline",
+          "description": "Create intelligent algorithms for context optimization including type-based truncation, relevance scoring, and token budget allocation",
+          "details": "",
+          "status": "pending",
+          "dependencies": [],
+          "parentTaskId": 28
+        },
+        {
+          "id": 3,
+          "title": "Create Command Interface Enhancements",
+          "description": "Add unified context options to all AI commands including --context-all flag and --context-max-tokens for controlling allocation",
+          "details": "",
+          "status": "pending",
+          "dependencies": [],
+          "parentTaskId": 28
+        },
+        {
+          "id": 4,
+          "title": "Integrate ContextManager with AI Services",
+          "description": "Update AI service integration to use the ContextManager with specialized context assembly for different operations",
+          "details": "",
+          "status": "pending",
+          "dependencies": [],
+          "parentTaskId": 28
+        },
+        {
+          "id": 5,
+          "title": "Implement Performance Monitoring and Metrics",
+          "description": "Create a system for tracking context usage statistics, logging selection decisions, and providing troubleshooting utilities",
+          "details": "",
+          "status": "pending",
+          "dependencies": [],
+          "parentTaskId": 28
         }
       ]
     }

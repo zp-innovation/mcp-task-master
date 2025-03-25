@@ -1,7 +1,7 @@
 # Task ID: 21
 # Title: Refactor dev.js into Modular Components
 # Status: done
-# Dependencies: ✅ 3 (done), ✅ 16 (done), ✅ 17 (done)
+# Dependencies: 3, 16, 17
 # Priority: high
 # Description: Restructure the monolithic dev.js file into separate modular components to improve code maintainability, readability, and testability while preserving all existing functionality.
 # Details:
@@ -65,19 +65,19 @@ Testing should verify that functionality remains identical after refactoring:
 
 
 ## 2. Create Core Module Structure and Entry Point Refactoring [done]
-### Dependencies: 1 (done)
+### Dependencies: 21.1
 ### Description: Create the skeleton structure for all module files (commands.js, ai-services.js, task-manager.js, ui.js, utils.js) with proper export statements. Refactor dev.js to serve as the entry point that imports and orchestrates these modules. Implement the basic initialization flow and command-line argument parsing in the new structure.
 ### Details:
 
 
 ## 3. Implement Core Module Functionality with Dependency Injection [done]
-### Dependencies: 2 (done)
+### Dependencies: 21.2
 ### Description: Migrate the core functionality from dev.js into the appropriate modules following the mapping document. Implement proper dependency injection to avoid circular dependencies. Ensure each module has a clear API and properly encapsulates its internal state. Focus on the critical path functionality first.
 ### Details:
 
 
 ## 4. Implement Error Handling and Complete Module Migration [done]
-### Dependencies: 3 (done)
+### Dependencies: 21.3
 ### Description: Establish a consistent error handling pattern across all modules. Complete the migration of remaining functionality from dev.js to the appropriate modules. Ensure all edge cases, error scenarios, and helper functions are properly moved and integrated. Update all import/export statements throughout the codebase to reference the new module structure.
 ### Details:
 

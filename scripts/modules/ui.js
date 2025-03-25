@@ -186,8 +186,8 @@ function formatDependenciesWithStatus(dependencies, allTasks, forConsole = false
         }
       }
       
-      const statusIcon = isDone ? '✅' : '⏱️';
-      return `${statusIcon} ${depIdStr} (${status})`;
+      // For plain text output (task files), return just the ID without any formatting or emoji
+      return depIdStr;
     }
     
     // If depId is a number less than 100, it's likely a reference to a subtask ID in the current task
@@ -206,33 +206,24 @@ function formatDependenciesWithStatus(dependencies, allTasks, forConsole = false
         `${depIdStr} (Not found)`;
     }
     
+    // Format with status
     const status = depTask.status || 'pending';
     const isDone = status.toLowerCase() === 'done' || status.toLowerCase() === 'completed';
     const isInProgress = status.toLowerCase() === 'in-progress';
     
-    // Apply colors for console output with more visible options
     if (forConsole) {
       if (isDone) {
-        return chalk.green.bold(depIdStr); // Make completed dependencies bold green
+        return chalk.green.bold(depIdStr);
       } else if (isInProgress) {
-        return chalk.hex('#FFA500').bold(depIdStr); // Use bright orange for in-progress (more visible)
+        return chalk.yellow.bold(depIdStr);
       } else {
-        return chalk.red.bold(depIdStr); // Make pending dependencies bold red
+        return chalk.red.bold(depIdStr);
       }
     }
     
-    const statusIcon = isDone ? '✅' : '⏱️';
-    return `${statusIcon} ${depIdStr} (${status})`;
+    // For plain text output (task files), return just the ID without any formatting or emoji
+    return depIdStr;
   });
-  
-  if (forConsole) {
-    // Handle both single and multiple dependencies
-    if (dependencies.length === 1) {
-      return formattedDeps[0]; // Return the single colored dependency
-    }
-    // Join multiple dependencies with white commas
-    return formattedDeps.join(chalk.white(', '));
-  }
   
   return formattedDeps.join(', ');
 }

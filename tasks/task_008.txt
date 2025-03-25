@@ -1,7 +1,7 @@
 # Task ID: 8
 # Title: Develop Implementation Drift Handling
 # Status: done
-# Dependencies: ✅ 3 (done), ✅ 5 (done), ✅ 7 (done)
+# Dependencies: 3, 5, 7
 # Priority: medium
 # Description: Create system to handle changes in implementation that affect future tasks.
 # Details:
@@ -35,13 +35,13 @@ Simulate implementation changes and test the system's ability to update future t
 
 
 ## 4. Implement Completed Work Preservation [done]
-### Dependencies: 3 (done)
+### Dependencies: 8.3
 ### Description: Develop a mechanism to ensure that updates to future tasks don't affect completed work. This includes creating a versioning system for tasks, tracking task history, and implementing safeguards to prevent modifications to completed tasks. The system should maintain a record of task changes while ensuring that completed work remains stable.
 ### Details:
 
 
 ## 5. Create Update Analysis and Suggestion Command [done]
-### Dependencies: 3 (done)
+### Dependencies: 8.3
 ### Description: Implement a CLI command that analyzes the current state of tasks, identifies potential drift between completed and pending tasks, and suggests updates. This command should provide a comprehensive report of potential inconsistencies and offer recommendations for task updates without automatically applying them. It should include options to apply all suggested changes, select specific changes to apply, or ignore suggestions.
 ### Details:
 

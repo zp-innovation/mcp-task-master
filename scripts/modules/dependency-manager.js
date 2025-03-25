@@ -135,6 +135,13 @@ async function addDependency(tasksPath, taskId, dependencyId) {
       writeJSON(tasksPath, data);
       log('success', `Added dependency ${formattedDependencyId} to task ${formattedTaskId}`);
       
+      // Display a more visually appealing success message
+      console.log(boxen(
+        chalk.green(`Successfully added dependency:\n\n`) +
+        `Task ${chalk.bold(formattedTaskId)} now depends on ${chalk.bold(formattedDependencyId)}`,
+        { padding: 1, borderColor: 'green', borderStyle: 'round', margin: { top: 1 } }
+      ));
+      
       // Generate updated task files
       await generateTaskFiles(tasksPath, 'tasks');
       

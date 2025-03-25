@@ -123,9 +123,11 @@ Important: Your response must be valid JSON only, with no additional explanation
 async function handleStreamingRequest(prdContent, prdPath, numTasks, maxTokens, systemPrompt) {
   const loadingIndicator = startLoadingIndicator('Generating tasks from PRD...');
   let responseText = '';
+  let streamingInterval = null;
   
   try {
-    const message = await anthropic.messages.create({
+    // Use streaming for handling large responses
+    const stream = await anthropic.messages.create({
       model: CONFIG.model,
       max_tokens: maxTokens,
       temperature: CONFIG.temperature,
@@ -135,14 +137,34 @@ async function handleStreamingRequest(prdContent, prdPath, numTasks, maxTokens, 
           role: 'user',
           content: `Here's the Product Requirements Document (PRD) to break down into ${numTasks} tasks:\n\n${prdContent}`
         }
-      ]
+      ],
+      stream: true
     });
     
-    responseText = message.content[0].text;
+    // Update loading indicator to show streaming progress
+    let dotCount = 0;
+    const readline = await import('readline');
+    streamingInterval = setInterval(() => {
+      readline.cursorTo(process.stdout, 0);
+      process.stdout.write(`Receiving streaming response from Claude${'.'.repeat(dotCount)}`);
+      dotCount = (dotCount + 1) % 4;
+    }, 500);
+    
+    // Process the stream
+    for await (const chunk of stream) {
+      if (chunk.type === 'content_block_delta' && chunk.delta.text) {
+        responseText += chunk.delta.text;
+      }
+    }
+    
+    if (streamingInterval) clearInterval(streamingInterval);
     stopLoadingIndicator(loadingIndicator);
+    
+    log('info', "Completed streaming response from Claude API!");
     
     return processClaudeResponse(responseText, numTasks, 0, prdContent, prdPath);
   } catch (error) {
+    if (streamingInterval) clearInterval(streamingInterval);
     stopLoadingIndicator(loadingIndicator);
     throw error;
   }
@@ -224,6 +246,8 @@ async function generateSubtasks(task, numSubtasks, nextSubtaskId, additionalCont
     log('info', `Generating ${numSubtasks} subtasks for task ${task.id}: ${task.title}`);
     
     const loadingIndicator = startLoadingIndicator(`Generating subtasks for task ${task.id}...`);
+    let streamingInterval = null;
+    let responseText = '';
     
     const systemPrompt = `You are an AI assistant helping with task breakdown for software development. 
 You need to break down a high-level task into ${numSubtasks} specific subtasks that can be implemented one by one.
@@ -269,22 +293,49 @@ Return exactly ${numSubtasks} subtasks with the following JSON structure:
 
 Note on dependencies: Subtasks can depend on other subtasks with lower IDs. Use an empty array if there are no dependencies.`;
 
-    const message = await anthropic.messages.create({
-      model: CONFIG.model,
-      max_tokens: CONFIG.maxTokens,
-      temperature: CONFIG.temperature,
-      system: systemPrompt,
-      messages: [
-        {
-          role: 'user',
-          content: userPrompt
+    try {
+      // Update loading indicator to show streaming progress
+      let dotCount = 0;
+      const readline = await import('readline');
+      streamingInterval = setInterval(() => {
+        readline.cursorTo(process.stdout, 0);
+        process.stdout.write(`Generating subtasks for task ${task.id}${'.'.repeat(dotCount)}`);
+        dotCount = (dotCount + 1) % 4;
+      }, 500);
+      
+      // Use streaming API call
+      const stream = await anthropic.messages.create({
+        model: CONFIG.model,
+        max_tokens: CONFIG.maxTokens,
+        temperature: CONFIG.temperature,
+        system: systemPrompt,
+        messages: [
+          {
+            role: 'user',
+            content: userPrompt
+          }
+        ],
+        stream: true
+      });
+      
+      // Process the stream
+      for await (const chunk of stream) {
+        if (chunk.type === 'content_block_delta' && chunk.delta.text) {
+          responseText += chunk.delta.text;
         }
-      ]
-    });
-    
-    stopLoadingIndicator(loadingIndicator);
-    
-    return parseSubtasksFromText(message.content[0].text, nextSubtaskId, numSubtasks, task.id);
+      }
+      
+      if (streamingInterval) clearInterval(streamingInterval);
+      stopLoadingIndicator(loadingIndicator);
+      
+      log('info', `Completed generating subtasks for task ${task.id}`);
+      
+      return parseSubtasksFromText(responseText, nextSubtaskId, numSubtasks, task.id);
+    } catch (error) {
+      if (streamingInterval) clearInterval(streamingInterval);
+      stopLoadingIndicator(loadingIndicator);
+      throw error;
+    }
   } catch (error) {
     log('error', `Error generating subtasks: ${error.message}`);
     throw error;
@@ -339,6 +390,8 @@ ${additionalContext || "No additional context provided."}
     
     // Now generate subtasks with Claude
     const loadingIndicator = startLoadingIndicator(`Generating research-backed subtasks for task ${task.id}...`);
+    let streamingInterval = null;
+    let responseText = '';
     
     const systemPrompt = `You are an AI assistant helping with task breakdown for software development.
 You need to break down a high-level task into ${numSubtasks} specific subtasks that can be implemented one by one.
@@ -350,7 +403,7 @@ Subtasks should:
 1. Be specific and actionable implementation steps
 2. Follow a logical sequence
 3. Each handle a distinct part of the parent task
-4. Include clear guidance on implementation approach, referencing the research where relevant
+4. Include clear guidance on implementation approach
 5. Have appropriate dependency chains between subtasks
 6. Collectively cover all aspects of the parent task
 
@@ -362,8 +415,7 @@ For each subtask, provide:
 
 Each subtask should be implementable in a focused coding session.`;
 
-    const userPrompt = `Please break down this task into ${numSubtasks} specific, actionable subtasks, 
-using the research findings to inform your breakdown:
+    const userPrompt = `Please break down this task into ${numSubtasks} specific, well-researched, actionable subtasks:
 
 Task ID: ${task.id}
 Title: ${task.title}
@@ -377,31 +429,58 @@ Return exactly ${numSubtasks} subtasks with the following JSON structure:
   {
     "id": ${nextSubtaskId},
     "title": "First subtask title",
-    "description": "Detailed description",
+    "description": "Detailed description incorporating research",
     "dependencies": [], 
-    "details": "Implementation details"
+    "details": "Implementation details with best practices"
   },
   ...more subtasks...
 ]
 
 Note on dependencies: Subtasks can depend on other subtasks with lower IDs. Use an empty array if there are no dependencies.`;
 
-    const message = await anthropic.messages.create({
-      model: CONFIG.model,
-      max_tokens: CONFIG.maxTokens,
-      temperature: CONFIG.temperature,
-      system: systemPrompt,
-      messages: [
-        {
-          role: 'user',
-          content: userPrompt
+    try {
+      // Update loading indicator to show streaming progress
+      let dotCount = 0;
+      const readline = await import('readline');
+      streamingInterval = setInterval(() => {
+        readline.cursorTo(process.stdout, 0);
+        process.stdout.write(`Generating research-backed subtasks for task ${task.id}${'.'.repeat(dotCount)}`);
+        dotCount = (dotCount + 1) % 4;
+      }, 500);
+      
+      // Use streaming API call
+      const stream = await anthropic.messages.create({
+        model: CONFIG.model,
+        max_tokens: CONFIG.maxTokens,
+        temperature: CONFIG.temperature,
+        system: systemPrompt,
+        messages: [
+          {
+            role: 'user',
+            content: userPrompt
+          }
+        ],
+        stream: true
+      });
+      
+      // Process the stream
+      for await (const chunk of stream) {
+        if (chunk.type === 'content_block_delta' && chunk.delta.text) {
+          responseText += chunk.delta.text;
         }
-      ]
-    });
-    
-    stopLoadingIndicator(loadingIndicator);
-    
-    return parseSubtasksFromText(message.content[0].text, nextSubtaskId, numSubtasks, task.id);
+      }
+      
+      if (streamingInterval) clearInterval(streamingInterval);
+      stopLoadingIndicator(loadingIndicator);
+      
+      log('info', `Completed generating research-backed subtasks for task ${task.id}`);
+      
+      return parseSubtasksFromText(responseText, nextSubtaskId, numSubtasks, task.id);
+    } catch (error) {
+      if (streamingInterval) clearInterval(streamingInterval);
+      stopLoadingIndicator(loadingIndicator);
+      throw error;
+    }
   } catch (error) {
     log('error', `Error generating research-backed subtasks: ${error.message}`);
     throw error;
