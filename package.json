@@ -1,12 +1,12 @@
 {
   "name": "task-master-ai",
-  "version": "0.9.26",
+  "version": "0.9.28",
   "description": "A task management system for ambitious AI-driven development that doesn't overwhelm and confuse Cursor.",
   "main": "index.js",
   "type": "module",
   "bin": {
-    "task-master": "./bin/task-master.js",
-    "task-master-init": "./bin/task-master-init.js"
+    "task-master": "bin/task-master.js",
+    "task-master-init": "bin/task-master-init.js"
   },
   "scripts": {
     "test": "node --experimental-vm-modules node_modules/.bin/jest",

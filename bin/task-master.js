@@ -143,6 +143,22 @@ function createDevScriptAction(commandName) {
     
     // Add Commander-provided defaults for options not specified by user
     Object.entries(options).forEach(([key, value]) => {
+      // Debug output to see what keys we're getting
+      if (process.env.DEBUG === '1') {
+        console.error(`DEBUG - Processing option: ${key} = ${value}`);
+      }
+
+      // Special case for numTasks > num-tasks (a known problem case)
+      if (key === 'numTasks') {
+        if (process.env.DEBUG === '1') {
+          console.error('DEBUG - Converting numTasks to num-tasks');
+        }
+        if (!userOptions.has('num-tasks') && !userOptions.has('numTasks')) {
+          args.push(`--num-tasks=${value}`);
+        }
+        return;
+      }
+      
       // Skip built-in Commander properties and options the user provided
       if (['parent', 'commands', 'options', 'rawArgs'].includes(key) || userOptions.has(key)) {
         return;
@@ -154,16 +170,17 @@ function createDevScriptAction(commandName) {
         return;
       }
       
-      // Add default values
+      // Add default values, using kebab-case for the parameter name
       if (value !== undefined) {
         if (typeof value === 'boolean') {
           if (value === true) {
-            args.push(`--${key}`);
+            args.push(`--${kebabKey}`);
           } else if (value === false && key === 'generate') {
             args.push('--no-generate');
           }
         } else {
-          args.push(`--${key}=${value}`);
+          // Always use kebab-case for option names
+          args.push(`--${kebabKey}=${value}`);
         }
       }
     });
