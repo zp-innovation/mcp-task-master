@@ -52,24 +52,82 @@ function createDevScriptAction(commandName) {
       args.push(...cmd.args);
     }
     
+    // Get the original CLI arguments to detect which options were explicitly specified
+    const originalArgs = process.argv;
+    
+    // Special handling for parent parameter which seems to have issues
+    const parentArg = originalArgs.find(arg => arg.startsWith('--parent='));
+    if (parentArg) {
+      args.push('-p', parentArg.split('=')[1]);
+    } else if (options.parent) {
+      args.push('-p', options.parent);
+    }
+    
     // Add all options
     Object.entries(options).forEach(([key, value]) => {
-      // Skip the Command's built-in properties
+      // Skip the Command's built-in properties and parent (special handling)
       if (['parent', 'commands', 'options', 'rawArgs'].includes(key)) {
+        return;
+      }
+      
+      // Special case: handle the 'generate' option which is automatically set to true
+      // We should only include it if --no-generate was explicitly specified
+      if (key === 'generate') {
+        // Check if --no-generate was explicitly specified
+        if (originalArgs.includes('--no-generate')) {
+          args.push('--no-generate');
+        }
+        return;
+      }
+      
+      // Look for how this parameter was passed in the original arguments
+      // Find if it was passed as --key=value
+      const equalsFormat = originalArgs.find(arg => arg.startsWith(`--${key}=`));
+      
+      // Check for kebab-case flags
+      // Convert camelCase back to kebab-case for command line arguments
+      const kebabKey = key.replace(/([A-Z])/g, '-$1').toLowerCase();
+      
+      // Check if it was passed with kebab-case
+      const foundInOriginal = originalArgs.find(arg => 
+        arg === `--${key}` || 
+        arg === `--${kebabKey}` || 
+        arg.startsWith(`--${key}=`) || 
+        arg.startsWith(`--${kebabKey}=`)
+      );
+      
+      // Determine the actual flag name to use (original or kebab-case)
+      const flagName = foundInOriginal ? 
+        (foundInOriginal.startsWith('--') ? foundInOriginal.split('=')[0].slice(2) : key) :
+        key;
+      
+      if (equalsFormat) {
+        // Preserve the original format with equals sign
+        args.push(equalsFormat);
         return;
       }
       
       // Handle boolean flags
       if (typeof value === 'boolean') {
         if (value === true) {
-          args.push(`--${key}`);
-        } else if (key.startsWith('no-')) {
-          // Handle --no-X options
-          const baseOption = key.substring(3);
-          args.push(`--${baseOption}`);
+          // For non-negated options, add the flag
+          if (!flagName.startsWith('no-')) {
+            args.push(`--${flagName}`);
+          }
+        } else {
+          // For false values, use --no-X format
+          if (flagName.startsWith('no-')) {
+            // If option is already in --no-X format, it means the user used --no-X explicitly
+            // We need to pass it as is
+            args.push(`--${flagName}`);
+          } else {
+            // If it's a regular option set to false, convert to --no-X
+            args.push(`--no-${flagName}`);
+          }
         }
       } else if (value !== undefined) {
-        args.push(`--${key}`, value.toString());
+        // For non-boolean values, pass as --key value (space-separated)
+        args.push(`--${flagName}`, value.toString());
       }
     });
     

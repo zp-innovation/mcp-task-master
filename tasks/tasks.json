@@ -1282,7 +1282,7 @@
       "id": 22,
       "title": "Create Comprehensive Test Suite for Task Master CLI",
       "description": "Develop a complete testing infrastructure for the Task Master CLI that includes unit, integration, and end-to-end tests to verify all core functionality and error handling.",
-      "status": "in-progress",
+      "status": "done",
       "dependencies": [
         21
       ],
@@ -1302,7 +1302,7 @@
           "id": 2,
           "title": "Implement Unit Tests for Core Components",
           "description": "Create a comprehensive set of unit tests for all utility functions, core logic components, and individual modules of the Task Master CLI. This includes tests for task creation, parsing, manipulation, data storage, retrieval, and formatting functions. Ensure all edge cases and error scenarios are covered.",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             1
           ],
@@ -1312,7 +1312,7 @@
           "id": 3,
           "title": "Develop Integration and End-to-End Tests",
           "description": "Create integration tests that verify the correct interaction between different components of the CLI, including command execution, option parsing, and data flow. Implement end-to-end tests that simulate complete user workflows, such as creating a task, expanding it, and updating its status. Include tests for error scenarios, recovery processes, and handling large numbers of tasks.",
-          "status": "pending",
+          "status": "deferred",
           "dependencies": [
             1,
             2
@@ -1444,6 +1444,177 @@
           "details": "1. Create a removeSubtask function in scripts/modules/task-manager.js\n2. Implement logic to validate the subtask exists and is actually a subtask\n3. Add options to either delete the subtask completely or convert it to a standalone task\n4. Update the parent task's subtasks array to remove the reference\n5. If converting to standalone task, clear the parentId reference\n6. Implement the remove-subtask command in scripts/modules/commands.js following patterns from add-subtask\n7. Add appropriate validation and error messages\n8. Document the command in the help system\n9. Export the function in task-manager.js\n10. Ensure proper error handling for all scenarios",
           "status": "done",
           "parentTaskId": 25
+        }
+      ]
+    },
+    {
+      "id": 26,
+      "title": "Implement Context Foundation for AI Operations",
+      "description": "Implement the foundation for context integration in Task Master, enabling AI operations to leverage file-based context, cursor rules, and basic code context to improve generated outputs.",
+      "status": "pending",
+      "dependencies": [
+        5,
+        6,
+        7
+      ],
+      "priority": "high",
+      "details": "Create a Phase 1 foundation for context integration in Task Master that provides immediate practical value:\n\n1. Add `--context-file` Flag to AI Commands:\n   - Add a consistent `--context-file <file>` option to all AI-related commands (expand, update, add-task, etc.)\n   - Implement file reading functionality that loads content from the specified file\n   - Add content integration into Claude API prompts with appropriate formatting\n   - Handle error conditions such as file not found gracefully\n   - Update help documentation to explain the new option\n\n2. Implement Cursor Rules Integration for Context:\n   - Create a `--context-rules <rules>` option for all AI commands\n   - Implement functionality to extract content from specified .cursor/rules/*.mdc files\n   - Support comma-separated lists of rule names and \"all\" option\n   - Add validation and error handling for non-existent rules\n   - Include helpful examples in command help output\n\n3. Implement Basic Context File Extraction Utility:\n   - Create utility functions in utils.js for reading context from files\n   - Add proper error handling and logging\n   - Implement content validation to ensure reasonable size limits\n   - Add content truncation if files exceed token limits\n   - Create helper functions for formatting context additions properly\n\n4. Update Command Handler Logic:\n   - Modify command handlers to support the new context options\n   - Update prompt construction to incorporate context content\n   - Ensure backwards compatibility with existing commands\n   - Add logging for context inclusion to aid troubleshooting\n\nThe focus of this phase is to provide immediate value with straightforward implementations that enable users to include relevant context in their AI operations.",
+      "testStrategy": "Testing should verify that the context foundation works as expected and adds value:\n\n1. Functional Tests:\n   - Verify `--context-file` flag correctly reads and includes content from specified files\n   - Test that `--context-rules` correctly extracts and formats content from cursor rules\n   - Test with both existing and non-existent files/rules to verify error handling\n   - Verify content truncation works appropriately for large files\n\n2. Integration Tests:\n   - Test each AI-related command with context options\n   - Verify context is properly included in API calls to Claude\n   - Test combinations of multiple context options\n   - Verify help documentation includes the new options\n\n3. Usability Testing:\n   - Create test scenarios that show clear improvement in AI output quality with context\n   - Compare outputs with and without context to measure impact\n   - Document examples of effective context usage for the user documentation\n\n4. Error Handling:\n   - Test invalid file paths and rule names\n   - Test oversized context files\n   - Verify appropriate error messages guide users to correct usage\n\nThe testing focus should be on proving immediate value to users while ensuring robust error handling.",
+      "subtasks": [
+        {
+          "id": 1,
+          "title": "Implement --context-file Flag for AI Commands",
+          "description": "Add the --context-file <file> option to all AI-related commands and implement file reading functionality",
+          "details": "1. Update the contextOptions array in commands.js to include the --context-file option\\n2. Modify AI command action handlers to check for the context-file option\\n3. Implement file reading functionality that loads content from the specified file\\n4. Add content integration into Claude API prompts with appropriate formatting\\n5. Add error handling for file not found or permission issues\\n6. Update help documentation to explain the new option with examples",
+          "status": "pending",
+          "dependencies": [],
+          "parentTaskId": 26
+        },
+        {
+          "id": 2,
+          "title": "Implement --context Flag for AI Commands",
+          "description": "Add support for directly passing context in the command line",
+          "details": "1. Update AI command options to include a --context option\\n2. Modify action handlers to process context from command line\\n3. Sanitize and truncate long context inputs\\n4. Add content integration into Claude API prompts\\n5. Update help documentation to explain the new option with examples",
+          "status": "pending",
+          "dependencies": [],
+          "parentTaskId": 26
+        },
+        {
+          "id": 3,
+          "title": "Implement Cursor Rules Integration for Context",
+          "description": "Create a --context-rules option for all AI commands that extracts content from specified .cursor/rules/*.mdc files",
+          "details": "1. Add --context-rules <rules> option to all AI-related commands\\n2. Implement functionality to extract content from specified .cursor/rules/*.mdc files\\n3. Support comma-separated lists of rule names and 'all' option\\n4. Add validation and error handling for non-existent rules\\n5. Include helpful examples in command help output",
+          "status": "pending",
+          "dependencies": [],
+          "parentTaskId": 26
+        },
+        {
+          "id": 4,
+          "title": "Implement Basic Context File Extraction Utility",
+          "description": "Create utility functions for reading context from files with error handling and content validation",
+          "details": "1. Create utility functions in utils.js for reading context from files\\n2. Add proper error handling and logging for file access issues\\n3. Implement content validation to ensure reasonable size limits\\n4. Add content truncation if files exceed token limits\\n5. Create helper functions for formatting context additions properly\\n6. Document the utility functions with clear examples",
+          "status": "pending",
+          "dependencies": [],
+          "parentTaskId": 26
+        },
+        {
+          "id": 5,
+          "title": "Test Subtask",
+          "description": "This is a test subtask",
+          "details": "",
+          "status": "pending",
+          "dependencies": [],
+          "parentTaskId": 26
+        }
+      ]
+    },
+    {
+      "id": 27,
+      "title": "Implement Context Enhancements for AI Operations",
+      "description": "Enhance the basic context integration with more sophisticated code context extraction, task history awareness, and PRD integration to provide richer context for AI operations.",
+      "status": "pending",
+      "dependencies": [
+        26
+      ],
+      "priority": "high",
+      "details": "Building upon the foundational context implementation in Task #26, implement Phase 2 context enhancements:\n\n1. Add Code Context Extraction Feature:\n   - Create a `--context-code <pattern>` option for all AI commands\n   - Implement glob-based file matching to extract code from specified patterns\n   - Create intelligent code parsing to extract most relevant sections (function signatures, classes, exports)\n   - Implement token usage optimization by selecting key structural elements\n   - Add formatting for code context with proper file paths and syntax indicators\n\n2. Implement Task History Context:\n   - Add a `--context-tasks <ids>` option for AI commands\n   - Support comma-separated task IDs and a \"similar\" option to find related tasks\n   - Create functions to extract context from specified tasks or find similar tasks\n   - Implement formatting for task context with clear section markers\n   - Add validation and error handling for non-existent task IDs\n\n3. Add PRD Context Integration:\n   - Create a `--context-prd <file>` option for AI commands\n   - Implement PRD text extraction and intelligent summarization\n   - Add formatting for PRD context with appropriate section markers\n   - Integrate with the existing PRD parsing functionality from Task #6\n\n4. Improve Context Formatting and Integration:\n   - Create a standardized context formatting system\n   - Implement type-based sectioning for different context sources\n   - Add token estimation for different context types to manage total prompt size\n   - Enhance prompt templates to better integrate various context types\n\nThese enhancements will provide significantly richer context for AI operations, resulting in more accurate and relevant outputs while remaining practical to implement.",
+      "testStrategy": "Testing should verify the enhanced context functionality:\n\n1. Code Context Testing:\n   - Verify pattern matching works for different glob patterns\n   - Test code extraction with various file types and sizes\n   - Verify intelligent parsing correctly identifies important code elements\n   - Test token optimization by comparing full file extraction vs. optimized extraction\n   - Check code formatting in prompts sent to Claude API\n\n2. Task History Testing:\n   - Test with different combinations of task IDs\n   - Verify \"similar\" option correctly identifies relevant tasks\n   - Test with non-existent task IDs to ensure proper error handling\n   - Verify formatting and integration in prompts\n\n3. PRD Context Testing:\n   - Test with various PRD files of different sizes\n   - Verify summarization functions correctly when PRDs are too large\n   - Test integration with prompts and formatting\n\n4. Performance Testing:\n   - Measure the impact of context enrichment on command execution time\n   - Test with large code bases to ensure reasonable performance\n   - Verify token counting and optimization functions work as expected\n\n5. Quality Assessment:\n   - Compare AI outputs with Phase 1 vs. Phase 2 context to measure improvements\n   - Create test cases that specifically benefit from code context\n   - Create test cases that benefit from task history context\n\nFocus testing on practical use cases that demonstrate clear improvements in AI-generated outputs.",
+      "subtasks": [
+        {
+          "id": 1,
+          "title": "Implement Code Context Extraction Feature",
+          "description": "Create a --context-code <pattern> option for AI commands and implement glob-based file matching to extract relevant code sections",
+          "details": "",
+          "status": "pending",
+          "dependencies": [],
+          "parentTaskId": 27
+        },
+        {
+          "id": 2,
+          "title": "Implement Task History Context Integration",
+          "description": "Add a --context-tasks option for AI commands that supports finding and extracting context from specified or similar tasks",
+          "details": "",
+          "status": "pending",
+          "dependencies": [],
+          "parentTaskId": 27
+        },
+        {
+          "id": 3,
+          "title": "Add PRD Context Integration",
+          "description": "Implement a --context-prd option for AI commands that extracts and formats content from PRD files",
+          "details": "",
+          "status": "pending",
+          "dependencies": [],
+          "parentTaskId": 27
+        },
+        {
+          "id": 4,
+          "title": "Create Standardized Context Formatting System",
+          "description": "Implement a consistent formatting system for different context types with section markers and token optimization",
+          "details": "",
+          "status": "pending",
+          "dependencies": [],
+          "parentTaskId": 27
+        }
+      ]
+    },
+    {
+      "id": 28,
+      "title": "Implement Advanced ContextManager System",
+      "description": "Create a comprehensive ContextManager class to unify context handling with advanced features like context optimization, prioritization, and intelligent context selection.",
+      "status": "pending",
+      "dependencies": [
+        26,
+        27
+      ],
+      "priority": "high",
+      "details": "Building on Phase 1 and Phase 2 context implementations, develop Phase 3 advanced context management:\n\n1. Implement the ContextManager Class:\n   - Create a unified `ContextManager` class that encapsulates all context functionality\n   - Implement methods for gathering context from all supported sources\n   - Create a configurable context priority system to favor more relevant context types\n   - Add token management to ensure context fits within API limits\n   - Implement caching for frequently used context to improve performance\n\n2. Create Context Optimization Pipeline:\n   - Develop intelligent context optimization algorithms\n   - Implement type-based truncation strategies (code vs. text)\n   - Create relevance scoring to prioritize most useful context portions\n   - Add token budget allocation that divides available tokens among context types\n   - Implement dynamic optimization based on operation type\n\n3. Add Command Interface Enhancements:\n   - Create the `--context-all` flag to include all available context\n   - Add the `--context-max-tokens <tokens>` option to control token allocation\n   - Implement unified context options across all AI commands\n   - Add intelligent default values for different command types\n\n4. Integrate with AI Services:\n   - Update the AI service integration to use the ContextManager\n   - Create specialized context assembly for different AI operations\n   - Add post-processing to capture new context from AI responses\n   - Implement adaptive context selection based on operation success\n\n5. Add Performance Monitoring:\n   - Create context usage statistics tracking\n   - Implement logging for context selection decisions\n   - Add warnings for context token limits\n   - Create troubleshooting utilities for context-related issues\n\nThe ContextManager system should provide a powerful but easy-to-use interface for both users and developers, maintaining backward compatibility with earlier phases while adding substantial new capabilities.",
+      "testStrategy": "Testing should verify both the functionality and performance of the advanced context management:\n\n1. Unit Testing:\n   - Test all ContextManager class methods with various inputs\n   - Verify optimization algorithms maintain critical information\n   - Test caching mechanisms for correctness and efficiency\n   - Verify token allocation and budgeting functions\n   - Test each context source integration separately\n\n2. Integration Testing:\n   - Verify ContextManager integration with AI services\n   - Test with all AI-related commands\n   - Verify backward compatibility with existing context options\n   - Test context prioritization across multiple context types\n   - Verify logging and error handling\n\n3. Performance Testing:\n   - Benchmark context gathering and optimization times\n   - Test with large and complex context sources\n   - Measure impact of caching on repeated operations\n   - Verify memory usage remains acceptable\n   - Test with token limits of different sizes\n\n4. Quality Assessment:\n   - Compare AI outputs using Phase 3 vs. earlier context handling\n   - Measure improvements in context relevance and quality\n   - Test complex scenarios requiring multiple context types\n   - Quantify the impact on token efficiency\n\n5. User Experience Testing:\n   - Verify CLI options are intuitive and well-documented\n   - Test error messages are helpful for troubleshooting\n   - Ensure log output provides useful insights\n   - Test all convenience options like `--context-all`\n\nCreate automated test suites for regression testing of the complete context system.",
+      "subtasks": [
+        {
+          "id": 1,
+          "title": "Implement Core ContextManager Class Structure",
+          "description": "Create a unified ContextManager class that encapsulates all context functionality with methods for gathering context from supported sources",
+          "details": "",
+          "status": "pending",
+          "dependencies": [],
+          "parentTaskId": 28
+        },
+        {
+          "id": 2,
+          "title": "Develop Context Optimization Pipeline",
+          "description": "Create intelligent algorithms for context optimization including type-based truncation, relevance scoring, and token budget allocation",
+          "details": "",
+          "status": "pending",
+          "dependencies": [],
+          "parentTaskId": 28
+        },
+        {
+          "id": 3,
+          "title": "Create Command Interface Enhancements",
+          "description": "Add unified context options to all AI commands including --context-all flag and --context-max-tokens for controlling allocation",
+          "details": "",
+          "status": "pending",
+          "dependencies": [],
+          "parentTaskId": 28
+        },
+        {
+          "id": 4,
+          "title": "Integrate ContextManager with AI Services",
+          "description": "Update AI service integration to use the ContextManager with specialized context assembly for different operations",
+          "details": "",
+          "status": "pending",
+          "dependencies": [],
+          "parentTaskId": 28
+        },
+        {
+          "id": 5,
+          "title": "Implement Performance Monitoring and Metrics",
+          "description": "Create a system for tracking context usage statistics, logging selection decisions, and providing troubleshooting utilities",
+          "details": "",
+          "status": "pending",
+          "dependencies": [],
+          "parentTaskId": 28
         }
       ]
     }
