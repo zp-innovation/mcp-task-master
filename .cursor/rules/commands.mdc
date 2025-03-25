@@ -35,7 +35,7 @@ alwaysApply: false
   - ✅ DO: Use descriptive, action-oriented names
 
 - **Option Names**:
-  - ✅ DO: Use camelCase for long-form option names (`--outputFormat`)
+  - ✅ DO: Use kebab-case for long-form option names (`--output-format`)
   - ✅ DO: Provide single-letter shortcuts when appropriate (`-f, --file`)
   - ✅ DO: Use consistent option names across similar commands
   - ❌ DON'T: Use different names for the same concept (`--file` in one command, `--path` in another)

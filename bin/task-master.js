@@ -27,6 +27,22 @@ const initScriptPath = resolve(__dirname, '../scripts/init.js');
 
 // Helper function to run dev.js with arguments
 function runDevScript(args) {
+  // Debug: Show the transformed arguments when DEBUG=1 is set
+  if (process.env.DEBUG === '1') {
+    console.error('\nDEBUG - CLI Wrapper Analysis:');
+    console.error('- Original command: ' + process.argv.join(' '));
+    console.error('- Transformed args: ' + args.join(' '));
+    console.error('- dev.js will receive: node ' + devScriptPath + ' ' + args.join(' ') + '\n');
+  }
+  
+  // For testing: If TEST_MODE is set, just print args and exit
+  if (process.env.TEST_MODE === '1') {
+    console.log('Would execute:');
+    console.log(`node ${devScriptPath} ${args.join(' ')}`);
+    process.exit(0);
+    return;
+  }
+  
   const child = spawn('node', [devScriptPath, ...args], {
     stdio: 'inherit',
     cwd: process.cwd()
@@ -44,93 +60,128 @@ function runDevScript(args) {
  */
 function createDevScriptAction(commandName) {
   return (options, cmd) => {
-    // Start with the command name
+    // Helper function to detect camelCase and convert to kebab-case
+    const toKebabCase = (str) => str.replace(/([A-Z])/g, '-$1').toLowerCase();
+    
+    // Check for camelCase flags and error out with helpful message
+    const camelCaseFlags = [];
+    for (const arg of process.argv) {
+      if (arg.startsWith('--') && /[A-Z]/.test(arg)) {
+        const flagName = arg.split('=')[0].slice(2); // Remove -- and anything after =
+        const kebabVersion = toKebabCase(flagName);
+        camelCaseFlags.push({ 
+          original: flagName, 
+          kebabCase: kebabVersion 
+        });
+      }
+    }
+    
+    // If camelCase flags were found, show error and exit
+    if (camelCaseFlags.length > 0) {
+      console.error('\nError: Please use kebab-case for CLI flags:');
+      camelCaseFlags.forEach(flag => {
+        console.error(`  Instead of: --${flag.original}`);
+        console.error(`  Use:        --${flag.kebabCase}`);
+      });
+      console.error('\nExample: task-master parse-prd --num-tasks=5 instead of --numTasks=5\n');
+      process.exit(1);
+    }
+    
+    // Since we've ensured no camelCase flags, we can now just:
+    // 1. Start with the command name
     const args = [commandName];
     
-    // Handle direct arguments (non-option arguments)
-    if (cmd && cmd.args && cmd.args.length > 0) {
-      args.push(...cmd.args);
-    }
+    // 3. Get positional arguments and explicit flags from the command line
+    const commandArgs = [];
+    const positionals = new Set(); // Track positional args we've seen
     
-    // Get the original CLI arguments to detect which options were explicitly specified
-    const originalArgs = process.argv;
-    
-    // Special handling for parent parameter which seems to have issues
-    const parentArg = originalArgs.find(arg => arg.startsWith('--parent='));
-    if (parentArg) {
-      args.push('-p', parentArg.split('=')[1]);
-    } else if (options.parent) {
-      args.push('-p', options.parent);
-    }
-    
-    // Add all options
-    Object.entries(options).forEach(([key, value]) => {
-      // Skip the Command's built-in properties and parent (special handling)
-      if (['parent', 'commands', 'options', 'rawArgs'].includes(key)) {
-        return;
-      }
-      
-      // Special case: handle the 'generate' option which is automatically set to true
-      // We should only include it if --no-generate was explicitly specified
-      if (key === 'generate') {
-        // Check if --no-generate was explicitly specified
-        if (originalArgs.includes('--no-generate')) {
-          args.push('--no-generate');
+    // Find the command in raw process.argv to extract args
+    const commandIndex = process.argv.indexOf(commandName);
+    if (commandIndex !== -1) {
+      // Process all args after the command name
+      for (let i = commandIndex + 1; i < process.argv.length; i++) {
+        const arg = process.argv[i];
+        
+        if (arg.startsWith('--')) {
+          // It's a flag - pass through as is
+          commandArgs.push(arg);
+          // Skip the next arg if this is a flag with a value (not --flag=value format)
+          if (!arg.includes('=') && 
+              i + 1 < process.argv.length && 
+              !process.argv[i+1].startsWith('--')) {
+            commandArgs.push(process.argv[++i]);
+          }
+        } else if (!positionals.has(arg)) {
+          // It's a positional argument we haven't seen
+          commandArgs.push(arg);
+          positionals.add(arg);
         }
+      }
+    }
+    
+    // Add all command line args we collected
+    args.push(...commandArgs);
+    
+    // 4. Add default options from Commander if not specified on command line
+    // Track which options we've seen on the command line
+    const userOptions = new Set();
+    for (const arg of commandArgs) {
+      if (arg.startsWith('--')) {
+        // Extract option name (without -- and value)
+        const name = arg.split('=')[0].slice(2);
+        userOptions.add(name);
+        
+        // Add the kebab-case version too, to prevent duplicates
+        const kebabName = name.replace(/([A-Z])/g, '-$1').toLowerCase();
+        userOptions.add(kebabName);
+        
+        // Add the camelCase version as well
+        const camelName = kebabName.replace(/-([a-z])/g, (_, letter) => letter.toUpperCase());
+        userOptions.add(camelName);
+      }
+    }
+    
+    // Add Commander-provided defaults for options not specified by user
+    Object.entries(options).forEach(([key, value]) => {
+      // Skip built-in Commander properties and options the user provided
+      if (['parent', 'commands', 'options', 'rawArgs'].includes(key) || userOptions.has(key)) {
         return;
       }
       
-      // Look for how this parameter was passed in the original arguments
-      // Find if it was passed as --key=value
-      const equalsFormat = originalArgs.find(arg => arg.startsWith(`--${key}=`));
-      
-      // Check for kebab-case flags
-      // Convert camelCase back to kebab-case for command line arguments
+      // Also check the kebab-case version of this key
       const kebabKey = key.replace(/([A-Z])/g, '-$1').toLowerCase();
-      
-      // Check if it was passed with kebab-case
-      const foundInOriginal = originalArgs.find(arg => 
-        arg === `--${key}` || 
-        arg === `--${kebabKey}` || 
-        arg.startsWith(`--${key}=`) || 
-        arg.startsWith(`--${kebabKey}=`)
-      );
-      
-      // Determine the actual flag name to use (original or kebab-case)
-      const flagName = foundInOriginal ? 
-        (foundInOriginal.startsWith('--') ? foundInOriginal.split('=')[0].slice(2) : key) :
-        key;
-      
-      if (equalsFormat) {
-        // Preserve the original format with equals sign
-        args.push(equalsFormat);
+      if (userOptions.has(kebabKey)) {
         return;
       }
       
-      // Handle boolean flags
-      if (typeof value === 'boolean') {
-        if (value === true) {
-          // For non-negated options, add the flag
-          if (!flagName.startsWith('no-')) {
-            args.push(`--${flagName}`);
+      // Add default values
+      if (value !== undefined) {
+        if (typeof value === 'boolean') {
+          if (value === true) {
+            args.push(`--${key}`);
+          } else if (value === false && key === 'generate') {
+            args.push('--no-generate');
           }
         } else {
-          // For false values, use --no-X format
-          if (flagName.startsWith('no-')) {
-            // If option is already in --no-X format, it means the user used --no-X explicitly
-            // We need to pass it as is
-            args.push(`--${flagName}`);
-          } else {
-            // If it's a regular option set to false, convert to --no-X
-            args.push(`--no-${flagName}`);
-          }
+          args.push(`--${key}=${value}`);
         }
-      } else if (value !== undefined) {
-        // For non-boolean values, pass as --key value (space-separated)
-        args.push(`--${flagName}`, value.toString());
       }
     });
     
+    // Special handling for parent parameter (uses -p)
+    if (options.parent && !args.includes('-p') && !userOptions.has('parent')) {
+      args.push('-p', options.parent);
+    }
+    
+    // Debug output for troubleshooting
+    if (process.env.DEBUG === '1') {
+      console.error('DEBUG - Command args:', commandArgs);
+      console.error('DEBUG - User options:', Array.from(userOptions));
+      console.error('DEBUG - Commander options:', options);
+      console.error('DEBUG - Final args:', args);
+    }
+    
+    // Run the script with our processed args
     runDevScript(args);
   };
 }
@@ -214,7 +265,8 @@ tempProgram.commands.forEach(cmd => {
   // Create a new command with the same name and description
   const newCmd = program
     .command(cmd.name())
-    .description(cmd.description());
+    .description(cmd.description())
+    .allowUnknownOption(); // Allow any options, including camelCase ones
   
   // Copy all options
   cmd.options.forEach(opt => {
