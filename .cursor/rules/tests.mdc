@@ -360,6 +360,43 @@ When testing ES modules (`"type": "module"` in package.json), traditional mockin
 - ❌ **DON'T**: Write tests that depend on execution order
 - ❌ **DON'T**: Define mock variables before `jest.mock()` calls (they won't be accessible due to hoisting)
 
+
+- **Task File Operations**
+  - ✅ DO: Use test-specific file paths (e.g., 'test-tasks.json') for all operations
+  - ✅ DO: Mock `readJSON` and `writeJSON` to avoid real file system interactions
+  - ✅ DO: Verify file operations use the correct paths in `expect` statements
+  - ✅ DO: Use different paths for each test to avoid test interdependence
+  - ✅ DO: Verify modifications on the in-memory task objects passed to `writeJSON`
+  - ❌ DON'T: Modify real task files (tasks.json) during tests
+  - ❌ DON'T: Skip testing file operations because they're "just I/O"
+  
+  ```javascript
+  // ✅ DO: Test file operations without real file system changes
+  test('should update task status in tasks.json', async () => {
+    // Setup mock to return sample data
+    readJSON.mockResolvedValue(JSON.parse(JSON.stringify(sampleTasks)));
+    
+    // Use test-specific file path
+    await setTaskStatus('test-tasks.json', '2', 'done');
+    
+    // Verify correct file path was read
+    expect(readJSON).toHaveBeenCalledWith('test-tasks.json');
+    
+    // Verify correct file path was written with updated content
+    expect(writeJSON).toHaveBeenCalledWith(
+      'test-tasks.json',
+      expect.objectContaining({
+        tasks: expect.arrayContaining([
+          expect.objectContaining({
+            id: 2,
+            status: 'done'
+          })
+        ])
+      })
+    );
+  });
+  ```
+
 ## Running Tests
 
 ```bash
