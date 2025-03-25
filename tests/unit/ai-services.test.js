@@ -285,4 +285,89 @@ These subtasks will help you implement the parent task efficiently.`;
       });
     });
   });
+
+  describe('handleClaudeError function', () => {
+    // Import the function directly for testing
+    let handleClaudeError;
+    
+    beforeAll(async () => {
+      // Dynamic import to get the actual function
+      const module = await import('../../scripts/modules/ai-services.js');
+      handleClaudeError = module.handleClaudeError;
+    });
+
+    test('should handle overloaded_error type', () => {
+      const error = {
+        type: 'error',
+        error: {
+          type: 'overloaded_error',
+          message: 'Claude is experiencing high volume'
+        }
+      };
+      
+      const result = handleClaudeError(error);
+      
+      expect(result).toContain('Claude is currently experiencing high demand');
+      expect(result).toContain('overloaded');
+    });
+
+    test('should handle rate_limit_error type', () => {
+      const error = {
+        type: 'error',
+        error: {
+          type: 'rate_limit_error',
+          message: 'Rate limit exceeded'
+        }
+      };
+      
+      const result = handleClaudeError(error);
+      
+      expect(result).toContain('exceeded the rate limit');
+    });
+
+    test('should handle invalid_request_error type', () => {
+      const error = {
+        type: 'error',
+        error: {
+          type: 'invalid_request_error',
+          message: 'Invalid request parameters'
+        }
+      };
+      
+      const result = handleClaudeError(error);
+      
+      expect(result).toContain('issue with the request format');
+    });
+
+    test('should handle timeout errors', () => {
+      const error = {
+        message: 'Request timed out after 60000ms'
+      };
+      
+      const result = handleClaudeError(error);
+      
+      expect(result).toContain('timed out');
+    });
+
+    test('should handle network errors', () => {
+      const error = {
+        message: 'Network error occurred'
+      };
+      
+      const result = handleClaudeError(error);
+      
+      expect(result).toContain('network error');
+    });
+
+    test('should handle generic errors', () => {
+      const error = {
+        message: 'Something unexpected happened'
+      };
+      
+      const result = handleClaudeError(error);
+      
+      expect(result).toContain('Error communicating with Claude');
+      expect(result).toContain('Something unexpected happened');
+    });
+  });
 }); 
