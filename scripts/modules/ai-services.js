@@ -18,6 +18,10 @@ dotenv.config();
 // Configure Anthropic client
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
+  // Add beta header for 128k token output
+  defaultHeaders: {
+    'anthropic-beta': 'output-128k-2025-02-19'
+  }
 });
 
 // Lazy-loaded Perplexity client

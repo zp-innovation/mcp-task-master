@@ -433,6 +433,111 @@ npm test -- -t "pattern to match"
   - Reset state in `beforeEach` and `afterEach` hooks
   - Avoid global state modifications
 
+## Reliable Testing Techniques
+
+- **Create Simplified Test Functions**
+  - Create simplified versions of complex functions that focus only on core logic
+  - Remove file system operations, API calls, and other external dependencies
+  - Pass all dependencies as parameters to make testing easier
+  
+  ```javascript
+  // Original function (hard to test)
+  const setTaskStatus = async (taskId, newStatus) => {
+    const tasksPath = 'tasks/tasks.json';
+    const data = await readJSON(tasksPath);
+    // Update task status logic
+    await writeJSON(tasksPath, data);
+    return data;
+  };
+  
+  // Test-friendly simplified function (easy to test)
+  const testSetTaskStatus = (tasksData, taskIdInput, newStatus) => {
+    // Same core logic without file operations
+    // Update task status logic on provided tasksData object
+    return tasksData; // Return updated data for assertions
+  };
+  ```
+
+- **Avoid Real File System Operations**
+  - Never write to real files during tests
+  - Create test-specific versions of file operation functions
+  - Mock all file system operations including read, write, exists, etc.
+  - Verify function behavior using the in-memory data structures
+  
+  ```javascript
+  // Mock file operations
+  const mockReadJSON = jest.fn();
+  const mockWriteJSON = jest.fn();
+  
+  jest.mock('../../scripts/modules/utils.js', () => ({
+    readJSON: mockReadJSON,
+    writeJSON: mockWriteJSON,
+  }));
+  
+  test('should update task status correctly', () => {
+    // Setup mock data
+    const testData = JSON.parse(JSON.stringify(sampleTasks));
+    mockReadJSON.mockReturnValue(testData);
+    
+    // Call the function that would normally modify files
+    const result = testSetTaskStatus(testData, '1', 'done');
+    
+    // Assert on the in-memory data structure
+    expect(result.tasks[0].status).toBe('done');
+  });
+  ```
+
+- **Data Isolation Between Tests**
+  - Always create fresh copies of test data for each test
+  - Use `JSON.parse(JSON.stringify(original))` for deep cloning
+  - Reset all mocks before each test with `jest.clearAllMocks()`
+  - Avoid state that persists between tests
+  
+  ```javascript
+  beforeEach(() => {
+    jest.clearAllMocks();
+    // Deep clone the test data
+    testTasksData = JSON.parse(JSON.stringify(sampleTasks));
+  });
+  ```
+
+- **Test All Path Variations**
+  - Regular tasks and subtasks
+  - Single items and multiple items
+  - Success paths and error paths
+  - Edge cases (empty data, invalid inputs, etc.)
+  
+  ```javascript
+  // Multiple test cases covering different scenarios
+  test('should update regular task status', () => {
+    /* test implementation */
+  });
+  
+  test('should update subtask status', () => {
+    /* test implementation */
+  });
+  
+  test('should update multiple tasks when given comma-separated IDs', () => {
+    /* test implementation */
+  });
+  
+  test('should throw error for non-existent task ID', () => {
+    /* test implementation */
+  });
+  ```
+
+- **Stabilize Tests With Predictable Input/Output**
+  - Use consistent, predictable test fixtures
+  - Avoid random values or time-dependent data
+  - Make tests deterministic for reliable CI/CD
+  - Control all variables that might affect test outcomes
+  
+  ```javascript
+  // Use a specific known date instead of current date
+  const fixedDate = new Date('2023-01-01T12:00:00Z');
+  jest.spyOn(global, 'Date').mockImplementation(() => fixedDate);
+  ```
+
 See [tests/README.md](mdc:tests/README.md) for more details on the testing approach.
 
 Refer to [jest.config.js](mdc:jest.config.js) for Jest configuration options. 

@@ -10,14 +10,17 @@ const mockLog = jest.fn();
 
 // Mock dependencies
 jest.mock('@anthropic-ai/sdk', () => {
+  const mockCreate = jest.fn().mockResolvedValue({
+    content: [{ text: 'AI response' }],
+  });
+  const mockAnthropicInstance = {
+    messages: {
+      create: mockCreate
+    }
+  };
+  const mockAnthropicConstructor = jest.fn().mockImplementation(() => mockAnthropicInstance);
   return {
-    Anthropic: jest.fn().mockImplementation(() => ({
-      messages: {
-        create: jest.fn().mockResolvedValue({
-          content: [{ text: 'AI response' }],
-        }),
-      },
-    })),
+    Anthropic: mockAnthropicConstructor
   };
 });
 
@@ -67,6 +70,9 @@ global.anthropic = {
 
 // Mock process.env
 const originalEnv = process.env;
+
+// Import Anthropic for testing constructor arguments
+import { Anthropic } from '@anthropic-ai/sdk';
 
 describe('AI Services Module', () => {
   beforeEach(() => {
@@ -368,6 +374,19 @@ These subtasks will help you implement the parent task efficiently.`;
       
       expect(result).toContain('Error communicating with Claude');
       expect(result).toContain('Something unexpected happened');
+    });
+  });
+
+  describe('Anthropic client configuration', () => {
+    test('should include output-128k beta header in client configuration', async () => {
+      // Read the file content to verify the change is present
+      const fs = await import('fs');
+      const path = await import('path');
+      const filePath = path.resolve('./scripts/modules/ai-services.js');
+      const fileContent = fs.readFileSync(filePath, 'utf8');
+      
+      // Check if the beta header is in the file
+      expect(fileContent).toContain("'anthropic-beta': 'output-128k-2025-02-19'");
     });
   });
 }); 
