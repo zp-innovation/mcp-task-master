@@ -20,6 +20,8 @@ import {
   expandAllTasks,
   clearSubtasks,
   addTask,
+  addSubtask,
+  removeSubtask,
   analyzeTaskComplexity
 } from './task-manager.js';
 
@@ -36,6 +38,7 @@ import {
   displayNextTask,
   displayTaskById,
   displayComplexityReport,
+  getStatusWithColor
 } from './ui.js';
 
 /**
@@ -399,6 +402,143 @@ function registerCommands(programInstance) {
     .option('-f, --file <file>', 'Path to the report file', 'scripts/task-complexity-report.json')
     .action(async (options) => {
       await displayComplexityReport(options.file);
+    });
+
+  // add-subtask command
+  programInstance
+    .command('add-subtask')
+    .description('Add a subtask to an existing task')
+    .option('-f, --file <file>', 'Path to the tasks file', 'tasks/tasks.json')
+    .option('-p, --parent <id>', 'Parent task ID (required)')
+    .option('-i, --task-id <id>', 'Existing task ID to convert to subtask')
+    .option('-t, --title <title>', 'Title for the new subtask (when creating a new subtask)')
+    .option('-d, --description <text>', 'Description for the new subtask')
+    .option('--details <text>', 'Implementation details for the new subtask')
+    .option('--dependencies <ids>', 'Comma-separated list of dependency IDs for the new subtask')
+    .option('-s, --status <status>', 'Status for the new subtask', 'pending')
+    .option('--no-generate', 'Skip regenerating task files')
+    .action(async (options) => {
+      const tasksPath = options.file;
+      const parentId = options.parent;
+      const existingTaskId = options.taskId;
+      const generateFiles = options.generate;
+      
+      if (!parentId) {
+        console.error(chalk.red('Error: --parent parameter is required. Please provide a parent task ID.'));
+        process.exit(1);
+      }
+      
+      // Parse dependencies if provided
+      let dependencies = [];
+      if (options.dependencies) {
+        dependencies = options.dependencies.split(',').map(id => {
+          // Handle both regular IDs and dot notation
+          return id.includes('.') ? id.trim() : parseInt(id.trim(), 10);
+        });
+      }
+      
+      try {
+        if (existingTaskId) {
+          // Convert existing task to subtask
+          console.log(chalk.blue(`Converting task ${existingTaskId} to a subtask of ${parentId}...`));
+          await addSubtask(tasksPath, parentId, existingTaskId, null, generateFiles);
+          console.log(chalk.green(`✓ Task ${existingTaskId} successfully converted to a subtask of task ${parentId}`));
+        } else if (options.title) {
+          // Create new subtask with provided data
+          console.log(chalk.blue(`Creating new subtask for parent task ${parentId}...`));
+          
+          const newSubtaskData = {
+            title: options.title,
+            description: options.description || '',
+            details: options.details || '',
+            status: options.status || 'pending',
+            dependencies: dependencies
+          };
+          
+          const subtask = await addSubtask(tasksPath, parentId, null, newSubtaskData, generateFiles);
+          console.log(chalk.green(`✓ New subtask ${parentId}.${subtask.id} successfully created`));
+          
+          // Display success message and suggested next steps
+          console.log(boxen(
+            chalk.white.bold(`Subtask ${parentId}.${subtask.id} Added Successfully`) + '\n\n' +
+            chalk.white(`Title: ${subtask.title}`) + '\n' +
+            chalk.white(`Status: ${getStatusWithColor(subtask.status)}`) + '\n' +
+            (dependencies.length > 0 ? chalk.white(`Dependencies: ${dependencies.join(', ')}`) + '\n' : '') +
+            '\n' +
+            chalk.white.bold('Next Steps:') + '\n' +
+            chalk.cyan(`1. Run ${chalk.yellow(`task-master show ${parentId}`)} to see the parent task with all subtasks`) + '\n' +
+            chalk.cyan(`2. Run ${chalk.yellow(`task-master set-status --id=${parentId}.${subtask.id} --status=in-progress`)} to start working on it`),
+            { padding: 1, borderColor: 'green', borderStyle: 'round', margin: { top: 1 } }
+          ));
+        } else {
+          console.error(chalk.red('Error: Either --task-id or --title must be provided.'));
+          console.log(boxen(
+            chalk.white.bold('Usage Examples:') + '\n\n' +
+            chalk.white('Convert existing task to subtask:') + '\n' +
+            chalk.yellow(`  task-master add-subtask --parent=5 --task-id=8`) + '\n\n' +
+            chalk.white('Create new subtask:') + '\n' +
+            chalk.yellow(`  task-master add-subtask --parent=5 --title="Implement login UI" --description="Create the login form"`) + '\n\n',
+            { padding: 1, borderColor: 'blue', borderStyle: 'round' }
+          ));
+          process.exit(1);
+        }
+      } catch (error) {
+        console.error(chalk.red(`Error: ${error.message}`));
+        process.exit(1);
+      }
+    });
+
+  // remove-subtask command
+  programInstance
+    .command('remove-subtask')
+    .description('Remove a subtask from its parent task')
+    .option('-f, --file <file>', 'Path to the tasks file', 'tasks/tasks.json')
+    .option('-i, --id <id>', 'Subtask ID to remove in format "parentId.subtaskId" (required)')
+    .option('-c, --convert', 'Convert the subtask to a standalone task instead of deleting it')
+    .option('--no-generate', 'Skip regenerating task files')
+    .action(async (options) => {
+      const tasksPath = options.file;
+      const subtaskId = options.id;
+      const convertToTask = options.convert || false;
+      const generateFiles = options.generate;
+      
+      if (!subtaskId) {
+        console.error(chalk.red('Error: --id parameter is required. Please provide a subtask ID in format "parentId.subtaskId".'));
+        process.exit(1);
+      }
+      
+      try {
+        console.log(chalk.blue(`Removing subtask ${subtaskId}...`));
+        if (convertToTask) {
+          console.log(chalk.blue('The subtask will be converted to a standalone task'));
+        }
+        
+        const result = await removeSubtask(tasksPath, subtaskId, convertToTask, generateFiles);
+        
+        if (convertToTask && result) {
+          // Display success message and next steps for converted task
+          console.log(boxen(
+            chalk.white.bold(`Subtask ${subtaskId} Converted to Task #${result.id}`) + '\n\n' +
+            chalk.white(`Title: ${result.title}`) + '\n' +
+            chalk.white(`Status: ${getStatusWithColor(result.status)}`) + '\n' +
+            chalk.white(`Dependencies: ${result.dependencies.join(', ')}`) + '\n\n' +
+            chalk.white.bold('Next Steps:') + '\n' +
+            chalk.cyan(`1. Run ${chalk.yellow(`task-master show ${result.id}`)} to see details of the new task`) + '\n' +
+            chalk.cyan(`2. Run ${chalk.yellow(`task-master set-status --id=${result.id} --status=in-progress`)} to start working on it`),
+            { padding: 1, borderColor: 'green', borderStyle: 'round', margin: { top: 1 } }
+          ));
+        } else {
+          // Display success message for deleted subtask
+          console.log(boxen(
+            chalk.white.bold(`Subtask ${subtaskId} Removed`) + '\n\n' +
+            chalk.white('The subtask has been successfully deleted.'),
+            { padding: 1, borderColor: 'green', borderStyle: 'round', margin: { top: 1 } }
+          ));
+        }
+      } catch (error) {
+        console.error(chalk.red(`Error: ${error.message}`));
+        process.exit(1);
+      }
     });
     
   // Add more commands as needed...

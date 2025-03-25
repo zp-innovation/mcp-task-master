@@ -20,97 +20,17 @@
       "subtasks": []
     },
     {
-      "id": 2,
-      "title": "Develop Command Line Interface Foundation",
-      "description": "Create the basic CLI structure using Commander.js with command parsing and help documentation.",
-      "status": "done",
-      "dependencies": [
-        "1"
-      ],
-      "priority": "high",
-      "details": "Implement the CLI foundation including:\n- Set up Commander.js for command parsing\n- Create help documentation for all commands\n- Implement colorized console output for better readability\n- Add logging system with configurable levels\n- Handle global options (--help, --version, --file, --quiet, --debug, --json)",
-      "testStrategy": "Test each command with various parameters to ensure proper parsing. Verify help documentation is comprehensive and accurate. Test logging at different verbosity levels.",
-      "subtasks": []
-    },
-    {
       "id": 3,
       "title": "Implement Basic Task Operations",
       "description": "Create core functionality for managing tasks including listing, creating, updating, and deleting tasks.",
       "status": "done",
       "dependencies": [
-        1,
-        2
+        1
       ],
       "priority": "high",
       "details": "Implement the following task operations:\n- List tasks with filtering options\n- Create new tasks with required fields\n- Update existing task properties\n- Delete tasks\n- Change task status (pending/done/deferred)\n- Handle dependencies between tasks\n- Manage task priorities",
       "testStrategy": "Test each operation with valid and invalid inputs. Verify that dependencies are properly tracked and that status changes are reflected correctly in the tasks.json file.",
-      "subtasks": [
-        {
-          "id": 1,
-          "title": "Implement Task Listing with Filtering",
-          "description": "Create a function that retrieves tasks from the tasks.json file and implements filtering options. Use the Commander.js CLI to add a 'list' command with various filter flags (e.g., --status, --priority, --dependency). Implement sorting options for the list output.",
-          "status": "done",
-          "dependencies": [],
-          "acceptanceCriteria": "- 'list' command is available in the CLI with help documentation"
-        },
-        {
-          "id": 2,
-          "title": "Develop Task Creation Functionality",
-          "description": "Implement a 'create' command in the CLI that allows users to add new tasks to the tasks.json file. Prompt for required fields (title, description, priority) and optional fields (dependencies, details, test strategy). Validate input and assign a unique ID to the new task.",
-          "status": "done",
-          "dependencies": [
-            1
-          ],
-          "acceptanceCriteria": "- 'create' command is available with interactive prompts for task details"
-        },
-        {
-          "id": 3,
-          "title": "Implement Task Update Operations",
-          "description": "Create an 'update' command that allows modification of existing task properties. Implement options to update individual fields or enter an interactive mode for multiple updates. Ensure that updates maintain data integrity, especially for dependencies.",
-          "status": "done",
-          "dependencies": [
-            1,
-            2
-          ],
-          "acceptanceCriteria": "- 'update' command accepts a task ID and field-specific flags for quick updates"
-        },
-        {
-          "id": 4,
-          "title": "Develop Task Deletion Functionality",
-          "description": "Implement a 'delete' command to remove tasks from tasks.json. Include safeguards against deleting tasks with dependencies and provide a force option to override. Update any tasks that had the deleted task as a dependency.",
-          "status": "done",
-          "dependencies": [
-            1,
-            2,
-            3
-          ],
-          "acceptanceCriteria": "- 'delete' command removes the specified task from tasks.json"
-        },
-        {
-          "id": 5,
-          "title": "Implement Task Status Management",
-          "description": "Create a 'status' command to change the status of tasks (pending/done/deferred). Implement logic to handle status changes, including updating dependent tasks if necessary. Add a batch mode for updating multiple task statuses at once.",
-          "status": "done",
-          "dependencies": [
-            1,
-            2,
-            3
-          ],
-          "acceptanceCriteria": "- 'status' command changes task status correctly in tasks.json"
-        },
-        {
-          "id": 6,
-          "title": "Develop Task Dependency and Priority Management",
-          "description": "Implement 'dependency' and 'priority' commands to manage task relationships and importance. Create functions to add/remove dependencies and change priorities. Ensure the system prevents circular dependencies and maintains consistent priority levels.",
-          "status": "done",
-          "dependencies": [
-            1,
-            2,
-            3
-          ],
-          "acceptanceCriteria": "- 'dependency' command can add or remove task dependencies"
-        }
-      ]
+      "subtasks": []
     },
     {
       "id": 4,
@@ -653,7 +573,6 @@
       "status": "done",
       "dependencies": [
         1,
-        2,
         3,
         4,
         6
@@ -729,7 +648,6 @@
       "status": "done",
       "dependencies": [
         1,
-        2,
         3
       ],
       "priority": "medium",
@@ -862,7 +780,6 @@
       "description": "Document and enhance existing agent interaction patterns through Cursor rules and dev.js commands.",
       "status": "done",
       "dependencies": [
-        2,
         14
       ],
       "priority": "medium",
@@ -935,8 +852,7 @@
       "description": "Implement robust configuration handling with environment variables and .env files.",
       "status": "done",
       "dependencies": [
-        1,
-        2
+        1
       ],
       "priority": "high",
       "details": "Build configuration management including:\n- Environment variable handling\n- .env file support\n- Configuration validation\n- Sensible defaults with overrides\n- Create .env.example template\n- Add configuration documentation\n- Implement secure handling of API keys",
@@ -1017,7 +933,6 @@
       "description": "Create a flexible logging system with configurable levels and output formats.",
       "status": "done",
       "dependencies": [
-        2,
         16
       ],
       "priority": "medium",
@@ -1082,7 +997,6 @@
       "status": "done",
       "dependencies": [
         1,
-        2,
         3,
         4,
         5,
@@ -1166,7 +1080,6 @@
       "status": "done",
       "dependencies": [
         1,
-        2,
         3,
         5,
         9,
@@ -1469,7 +1382,7 @@
       "id": 25,
       "title": "Implement 'add-subtask' Command for Task Hierarchy Management",
       "description": "Create a command-line interface command that allows users to manually add subtasks to existing tasks, establishing a parent-child relationship between tasks.",
-      "status": "pending",
+      "status": "done",
       "dependencies": [
         3
       ],
@@ -1483,7 +1396,7 @@
           "description": "Modify the task data structure to support hierarchical relationships between tasks",
           "dependencies": [],
           "details": "1. Examine the current task data structure in scripts/modules/task-manager.js\n2. Add a 'parentId' field to the task object schema to reference parent tasks\n3. Add a 'subtasks' array field to store references to child tasks\n4. Update any relevant validation functions to account for these new fields\n5. Ensure serialization and deserialization of tasks properly handles these new fields\n6. Update the storage mechanism to persist these relationships\n7. Test by manually creating tasks with parent-child relationships and verifying they're saved correctly\n8. Write unit tests to verify the updated data model works as expected",
-          "status": "pending",
+          "status": "done",
           "parentTaskId": 25
         },
         {
@@ -1494,7 +1407,7 @@
             1
           ],
           "details": "1. Create a new addSubtask function in scripts/modules/task-manager.js\n2. Implement logic to validate that the parent task exists\n3. Add functionality to handle both creating new subtasks and converting existing tasks\n4. For new subtasks: collect task information and create a new task with parentId set\n5. For existing tasks: validate it's not already a subtask and update its parentId\n6. Add validation to prevent circular dependencies (a task cannot be a subtask of its own subtask)\n7. Update the parent task's subtasks array\n8. Ensure proper error handling with descriptive error messages\n9. Export the function for use by the command handler\n10. Write unit tests to verify all scenarios (new subtask, converting task, error cases)",
-          "status": "pending",
+          "status": "done",
           "parentTaskId": 25
         },
         {
@@ -1505,7 +1418,7 @@
             2
           ],
           "details": "1. Add a new command registration in scripts/modules/commands.js following existing patterns\n2. Define command syntax: 'add-subtask <parentId> [--task-id=<taskId> | --title=<title>]'\n3. Implement command handler that calls the addSubtask function from task-manager.js\n4. Add interactive prompts to collect required information when not provided as arguments\n5. Implement validation for command arguments\n6. Add appropriate success and error messages\n7. Document the command syntax and options in the help system\n8. Test the command with various input combinations\n9. Ensure the command follows the same patterns as other commands like add-dependency",
-          "status": "pending",
+          "status": "done",
           "parentTaskId": 25
         },
         {
@@ -1517,7 +1430,7 @@
             3
           ],
           "details": "1. Create a test file in tests/unit/ directory for the add-subtask functionality\n2. Write tests for the addSubtask function in task-manager.js\n3. Test all key scenarios: adding new subtasks, converting existing tasks to subtasks\n4. Test error cases: non-existent parent task, circular dependencies, invalid input\n5. Use Jest mocks to isolate the function from file system operations\n6. Test the command handler in isolation using mock functions\n7. Ensure test coverage for all branches and edge cases\n8. Document the testing approach for future reference",
-          "status": "pending",
+          "status": "done",
           "parentTaskId": 25
         },
         {
@@ -1529,7 +1442,7 @@
             3
           ],
           "details": "1. Create a removeSubtask function in scripts/modules/task-manager.js\n2. Implement logic to validate the subtask exists and is actually a subtask\n3. Add options to either delete the subtask completely or convert it to a standalone task\n4. Update the parent task's subtasks array to remove the reference\n5. If converting to standalone task, clear the parentId reference\n6. Implement the remove-subtask command in scripts/modules/commands.js following patterns from add-subtask\n7. Add appropriate validation and error messages\n8. Document the command in the help system\n9. Export the function in task-manager.js\n10. Ensure proper error handling for all scenarios",
-          "status": "pending",
+          "status": "done",
           "parentTaskId": 25
         }
       ]

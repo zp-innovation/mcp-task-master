@@ -1,7 +1,7 @@
 # Task ID: 13
 # Title: Create Cursor Rules Implementation
 # Status: done
-# Dependencies: 1, 2, 3
+# Dependencies: 1, 3
 # Priority: medium
 # Description: Develop the Cursor AI integration rules and documentation.
 # Details:

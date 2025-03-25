@@ -279,5 +279,5 @@ export {
   formatTaskId,
   findTaskById,
   truncate,
-  findCycles,
+  findCycles
 }; 

@@ -160,4 +160,71 @@ alwaysApply: false
   import { addDependency } from './dependency-manager.js';
   ```
 
+## Subtask Management Commands
+
+- **Add Subtask Command Structure**:
+  ```javascript
+  // ✅ DO: Follow this structure for adding subtasks
+  programInstance
+    .command('add-subtask')
+    .description('Add a new subtask to a parent task or convert an existing task to a subtask')
+    .option('-f, --file <path>', 'Path to the tasks file', 'tasks/tasks.json')
+    .option('-p, --parent <id>', 'ID of the parent task (required)')
+    .option('-e, --existing <id>', 'ID of an existing task to convert to a subtask')
+    .option('-t, --title <title>', 'Title for the new subtask (when not converting)')
+    .option('-d, --description <description>', 'Description for the new subtask (when not converting)')
+    .option('--details <details>', 'Implementation details for the new subtask (when not converting)')
+    .option('--dependencies <ids>', 'Comma-separated list of subtask IDs this subtask depends on')
+    .option('--status <status>', 'Initial status for the subtask', 'pending')
+    .action(async (options) => {
+      // Validate required parameters
+      if (!options.parent) {
+        console.error(chalk.red('Error: --parent parameter is required'));
+        process.exit(1);
+      }
+      
+      // Validate that either existing task ID or title is provided
+      if (!options.existing && !options.title) {
+        console.error(chalk.red('Error: Either --existing or --title must be provided'));
+        process.exit(1);
+      }
+      
+      try {
+        // Implementation
+      } catch (error) {
+        // Error handling
+      }
+    });
+  ```
+
+- **Remove Subtask Command Structure**:
+  ```javascript
+  // ✅ DO: Follow this structure for removing subtasks
+  programInstance
+    .command('remove-subtask')
+    .description('Remove a subtask from its parent task, optionally converting it to a standalone task')
+    .option('-f, --file <path>', 'Path to the tasks file', 'tasks/tasks.json')
+    .option('-i, --id <id>', 'ID of the subtask to remove in format "parentId.subtaskId" (required)')
+    .option('-c, --convert', 'Convert the subtask to a standalone task')
+    .action(async (options) => {
+      // Validate required parameters
+      if (!options.id) {
+        console.error(chalk.red('Error: --id parameter is required'));
+        process.exit(1);
+      }
+      
+      // Validate subtask ID format
+      if (!options.id.includes('.')) {
+        console.error(chalk.red('Error: Subtask ID must be in format "parentId.subtaskId"'));
+        process.exit(1);
+      }
+      
+      try {
+        // Implementation
+      } catch (error) {
+        // Error handling
+      }
+    });
+  ```
+
 Refer to [`commands.js`](mdc:scripts/modules/commands.js) for implementation examples and [`new_features.mdc`](mdc:.cursor/rules/new_features.mdc) for integration guidelines. 

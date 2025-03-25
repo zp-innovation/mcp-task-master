@@ -2288,6 +2288,274 @@ function findNextTask(tasks) {
   return nextTask;
 }
 
+/**
+ * Add a subtask to a parent task
+ * @param {string} tasksPath - Path to the tasks.json file
+ * @param {number|string} parentId - ID of the parent task
+ * @param {number|string|null} existingTaskId - ID of an existing task to convert to subtask (optional)
+ * @param {Object} newSubtaskData - Data for creating a new subtask (used if existingTaskId is null)
+ * @param {boolean} generateFiles - Whether to regenerate task files after adding the subtask
+ * @returns {Object} The newly created or converted subtask
+ */
+async function addSubtask(tasksPath, parentId, existingTaskId = null, newSubtaskData = null, generateFiles = true) {
+  try {
+    log('info', `Adding subtask to parent task ${parentId}...`);
+    
+    // Read the existing tasks
+    const data = readJSON(tasksPath);
+    if (!data || !data.tasks) {
+      throw new Error(`Invalid or missing tasks file at ${tasksPath}`);
+    }
+    
+    // Convert parent ID to number
+    const parentIdNum = parseInt(parentId, 10);
+    
+    // Find the parent task
+    const parentTask = data.tasks.find(t => t.id === parentIdNum);
+    if (!parentTask) {
+      throw new Error(`Parent task with ID ${parentIdNum} not found`);
+    }
+    
+    // Initialize subtasks array if it doesn't exist
+    if (!parentTask.subtasks) {
+      parentTask.subtasks = [];
+    }
+    
+    let newSubtask;
+    
+    // Case 1: Convert an existing task to a subtask
+    if (existingTaskId !== null) {
+      const existingTaskIdNum = parseInt(existingTaskId, 10);
+      
+      // Find the existing task
+      const existingTaskIndex = data.tasks.findIndex(t => t.id === existingTaskIdNum);
+      if (existingTaskIndex === -1) {
+        throw new Error(`Task with ID ${existingTaskIdNum} not found`);
+      }
+      
+      const existingTask = data.tasks[existingTaskIndex];
+      
+      // Check if task is already a subtask
+      if (existingTask.parentTaskId) {
+        throw new Error(`Task ${existingTaskIdNum} is already a subtask of task ${existingTask.parentTaskId}`);
+      }
+      
+      // Check for circular dependency
+      if (existingTaskIdNum === parentIdNum) {
+        throw new Error(`Cannot make a task a subtask of itself`);
+      }
+      
+      // Check if parent task is a subtask of the task we're converting
+      // This would create a circular dependency
+      if (isTaskDependentOn(data.tasks, parentTask, existingTaskIdNum)) {
+        throw new Error(`Cannot create circular dependency: task ${parentIdNum} is already a subtask or dependent of task ${existingTaskIdNum}`);
+      }
+      
+      // Find the highest subtask ID to determine the next ID
+      const highestSubtaskId = parentTask.subtasks.length > 0 
+        ? Math.max(...parentTask.subtasks.map(st => st.id))
+        : 0;
+      const newSubtaskId = highestSubtaskId + 1;
+      
+      // Clone the existing task to be converted to a subtask
+      newSubtask = { ...existingTask, id: newSubtaskId, parentTaskId: parentIdNum };
+      
+      // Add to parent's subtasks
+      parentTask.subtasks.push(newSubtask);
+      
+      // Remove the task from the main tasks array
+      data.tasks.splice(existingTaskIndex, 1);
+      
+      log('info', `Converted task ${existingTaskIdNum} to subtask ${parentIdNum}.${newSubtaskId}`);
+    }
+    // Case 2: Create a new subtask
+    else if (newSubtaskData) {
+      // Find the highest subtask ID to determine the next ID
+      const highestSubtaskId = parentTask.subtasks.length > 0 
+        ? Math.max(...parentTask.subtasks.map(st => st.id))
+        : 0;
+      const newSubtaskId = highestSubtaskId + 1;
+      
+      // Create the new subtask object
+      newSubtask = {
+        id: newSubtaskId,
+        title: newSubtaskData.title,
+        description: newSubtaskData.description || '',
+        details: newSubtaskData.details || '',
+        status: newSubtaskData.status || 'pending',
+        dependencies: newSubtaskData.dependencies || [],
+        parentTaskId: parentIdNum
+      };
+      
+      // Add to parent's subtasks
+      parentTask.subtasks.push(newSubtask);
+      
+      log('info', `Created new subtask ${parentIdNum}.${newSubtaskId}`);
+    } else {
+      throw new Error('Either existingTaskId or newSubtaskData must be provided');
+    }
+    
+    // Write the updated tasks back to the file
+    writeJSON(tasksPath, data);
+    
+    // Generate task files if requested
+    if (generateFiles) {
+      log('info', 'Regenerating task files...');
+      await generateTaskFiles(tasksPath, path.dirname(tasksPath));
+    }
+    
+    return newSubtask;
+  } catch (error) {
+    log('error', `Error adding subtask: ${error.message}`);
+    throw error;
+  }
+}
+
+/**
+ * Check if a task is dependent on another task (directly or indirectly)
+ * Used to prevent circular dependencies
+ * @param {Array} allTasks - Array of all tasks
+ * @param {Object} task - The task to check
+ * @param {number} targetTaskId - The task ID to check dependency against
+ * @returns {boolean} Whether the task depends on the target task
+ */
+function isTaskDependentOn(allTasks, task, targetTaskId) {
+  // If the task is a subtask, check if its parent is the target
+  if (task.parentTaskId === targetTaskId) {
+    return true;
+  }
+  
+  // Check direct dependencies
+  if (task.dependencies && task.dependencies.includes(targetTaskId)) {
+    return true;
+  }
+  
+  // Check dependencies of dependencies (recursive)
+  if (task.dependencies) {
+    for (const depId of task.dependencies) {
+      const depTask = allTasks.find(t => t.id === depId);
+      if (depTask && isTaskDependentOn(allTasks, depTask, targetTaskId)) {
+        return true;
+      }
+    }
+  }
+  
+  // Check subtasks for dependencies
+  if (task.subtasks) {
+    for (const subtask of task.subtasks) {
+      if (isTaskDependentOn(allTasks, subtask, targetTaskId)) {
+        return true;
+      }
+    }
+  }
+  
+  return false;
+}
+
+/**
+ * Remove a subtask from its parent task
+ * @param {string} tasksPath - Path to the tasks.json file
+ * @param {string} subtaskId - ID of the subtask to remove in format "parentId.subtaskId"
+ * @param {boolean} convertToTask - Whether to convert the subtask to a standalone task
+ * @param {boolean} generateFiles - Whether to regenerate task files after removing the subtask
+ * @returns {Object|null} The removed subtask if convertToTask is true, otherwise null
+ */
+async function removeSubtask(tasksPath, subtaskId, convertToTask = false, generateFiles = true) {
+  try {
+    log('info', `Removing subtask ${subtaskId}...`);
+    
+    // Read the existing tasks
+    const data = readJSON(tasksPath);
+    if (!data || !data.tasks) {
+      throw new Error(`Invalid or missing tasks file at ${tasksPath}`);
+    }
+    
+    // Parse the subtask ID (format: "parentId.subtaskId")
+    if (!subtaskId.includes('.')) {
+      throw new Error(`Invalid subtask ID format: ${subtaskId}. Expected format: "parentId.subtaskId"`);
+    }
+    
+    const [parentIdStr, subtaskIdStr] = subtaskId.split('.');
+    const parentId = parseInt(parentIdStr, 10);
+    const subtaskIdNum = parseInt(subtaskIdStr, 10);
+    
+    // Find the parent task
+    const parentTask = data.tasks.find(t => t.id === parentId);
+    if (!parentTask) {
+      throw new Error(`Parent task with ID ${parentId} not found`);
+    }
+    
+    // Check if parent has subtasks
+    if (!parentTask.subtasks || parentTask.subtasks.length === 0) {
+      throw new Error(`Parent task ${parentId} has no subtasks`);
+    }
+    
+    // Find the subtask to remove
+    const subtaskIndex = parentTask.subtasks.findIndex(st => st.id === subtaskIdNum);
+    if (subtaskIndex === -1) {
+      throw new Error(`Subtask ${subtaskId} not found`);
+    }
+    
+    // Get a copy of the subtask before removing it
+    const removedSubtask = { ...parentTask.subtasks[subtaskIndex] };
+    
+    // Remove the subtask from the parent
+    parentTask.subtasks.splice(subtaskIndex, 1);
+    
+    // If parent has no more subtasks, remove the subtasks array
+    if (parentTask.subtasks.length === 0) {
+      delete parentTask.subtasks;
+    }
+    
+    let convertedTask = null;
+    
+    // Convert the subtask to a standalone task if requested
+    if (convertToTask) {
+      log('info', `Converting subtask ${subtaskId} to a standalone task...`);
+      
+      // Find the highest task ID to determine the next ID
+      const highestId = Math.max(...data.tasks.map(t => t.id));
+      const newTaskId = highestId + 1;
+      
+      // Create the new task from the subtask
+      convertedTask = {
+        id: newTaskId,
+        title: removedSubtask.title,
+        description: removedSubtask.description || '',
+        details: removedSubtask.details || '',
+        status: removedSubtask.status || 'pending',
+        dependencies: removedSubtask.dependencies || [],
+        priority: parentTask.priority || 'medium' // Inherit priority from parent
+      };
+      
+      // Add the parent task as a dependency if not already present
+      if (!convertedTask.dependencies.includes(parentId)) {
+        convertedTask.dependencies.push(parentId);
+      }
+      
+      // Add the converted task to the tasks array
+      data.tasks.push(convertedTask);
+      
+      log('info', `Created new task ${newTaskId} from subtask ${subtaskId}`);
+    } else {
+      log('info', `Subtask ${subtaskId} deleted`);
+    }
+    
+    // Write the updated tasks back to the file
+    writeJSON(tasksPath, data);
+    
+    // Generate task files if requested
+    if (generateFiles) {
+      log('info', 'Regenerating task files...');
+      await generateTaskFiles(tasksPath, path.dirname(tasksPath));
+    }
+    
+    return convertedTask;
+  } catch (error) {
+    log('error', `Error removing subtask: ${error.message}`);
+    throw error;
+  }
+}
 
 // Export task manager functions
 export {
@@ -2301,6 +2569,8 @@ export {
   expandAllTasks,
   clearSubtasks,
   addTask,
+  addSubtask,
+  removeSubtask,
   findNextTask,
   analyzeTaskComplexity,
 }; 

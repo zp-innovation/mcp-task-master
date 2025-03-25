@@ -1,7 +1,7 @@
 # Task ID: 16
 # Title: Create Configuration Management System
 # Status: done
-# Dependencies: 1, 2
+# Dependencies: 1
 # Priority: high
 # Description: Implement robust configuration handling with environment variables and .env files.
 # Details:

@@ -1,6 +1,6 @@
 # Task ID: 25
 # Title: Implement 'add-subtask' Command for Task Hierarchy Management
-# Status: pending
+# Status: done
 # Dependencies: 3
 # Priority: medium
 # Description: Create a command-line interface command that allows users to manually add subtasks to existing tasks, establishing a parent-child relationship between tasks.
@@ -46,7 +46,7 @@ Testing should verify both the functionality and edge cases of the subtask imple
    - Test the command with various parameter combinations
 
 # Subtasks:
-## 1. Update Data Model to Support Parent-Child Task Relationships [pending]
+## 1. Update Data Model to Support Parent-Child Task Relationships [done]
 ### Dependencies: None
 ### Description: Modify the task data structure to support hierarchical relationships between tasks
 ### Details:
@@ -59,7 +59,7 @@ Testing should verify both the functionality and edge cases of the subtask imple
 7. Test by manually creating tasks with parent-child relationships and verifying they're saved correctly
 8. Write unit tests to verify the updated data model works as expected
 
-## 2. Implement Core addSubtask Function in task-manager.js [pending]
+## 2. Implement Core addSubtask Function in task-manager.js [done]
 ### Dependencies: 25.1
 ### Description: Create the core function that handles adding subtasks to parent tasks
 ### Details:
@@ -74,7 +74,7 @@ Testing should verify both the functionality and edge cases of the subtask imple
 9. Export the function for use by the command handler
 10. Write unit tests to verify all scenarios (new subtask, converting task, error cases)
 
-## 3. Implement add-subtask Command in commands.js [pending]
+## 3. Implement add-subtask Command in commands.js [done]
 ### Dependencies: 25.2
 ### Description: Create the command-line interface for the add-subtask functionality
 ### Details:
@@ -88,7 +88,7 @@ Testing should verify both the functionality and edge cases of the subtask imple
 8. Test the command with various input combinations
 9. Ensure the command follows the same patterns as other commands like add-dependency
 
-## 4. Create Unit Test for add-subtask [pending]
+## 4. Create Unit Test for add-subtask [done]
 ### Dependencies: 25.2, 25.3
 ### Description: Develop comprehensive unit tests for the add-subtask functionality
 ### Details:
@@ -101,7 +101,7 @@ Testing should verify both the functionality and edge cases of the subtask imple
 7. Ensure test coverage for all branches and edge cases
 8. Document the testing approach for future reference
 
-## 5. Implement remove-subtask Command [pending]
+## 5. Implement remove-subtask Command [done]
 ### Dependencies: 25.2, 25.3
 ### Description: Create functionality to remove a subtask from its parent, following the same approach as add-subtask
 ### Details:

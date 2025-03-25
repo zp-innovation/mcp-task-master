@@ -1,7 +1,7 @@
 # Task ID: 17
 # Title: Implement Comprehensive Logging System
 # Status: done
-# Dependencies: 2, 16
+# Dependencies: 16
 # Priority: medium
 # Description: Create a flexible logging system with configurable levels and output formats.
 # Details:

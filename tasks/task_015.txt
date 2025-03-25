@@ -1,7 +1,7 @@
 # Task ID: 15
 # Title: Optimize Agent Integration with Cursor and dev.js Commands
 # Status: done
-# Dependencies: 2, 14
+# Dependencies: 14
 # Priority: medium
 # Description: Document and enhance existing agent interaction patterns through Cursor rules and dev.js commands.
 # Details:
