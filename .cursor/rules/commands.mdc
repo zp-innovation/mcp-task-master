@@ -50,6 +50,8 @@ alwaysApply: false
   .option('-p, --path <dir>', 'Output directory') // Should be --output
   ```
 
+  > **Note**: Although options are defined with kebab-case (`--num-tasks`), Commander.js stores them internally as camelCase properties. Access them in code as `options.numTasks`, not `options['num-tasks']`.
+
 ## Input Validation
 
 - **Required Parameters**:

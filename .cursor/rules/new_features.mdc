@@ -133,7 +133,7 @@ For features requiring components in multiple modules:
 
 - **Naming Conventions**:
   - Use kebab-case for command names (`analyze-complexity`, not `analyzeComplexity`)
-  - Use camelCase for option names (`--outputFormat`, not `--output-format`) 
+  - Use kebab-case for option names (`--output-format`, not `--outputFormat`) 
   - Use the same option names across commands when they represent the same concept
 
 - **Command Structure**:
