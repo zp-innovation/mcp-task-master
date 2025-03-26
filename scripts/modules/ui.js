@@ -749,7 +749,7 @@ async function displayTaskById(tasksPath, taskId) {
         chalk.magenta.bold('Title'),
         chalk.magenta.bold('Deps')
       ],
-      colWidths: [6, 12, Math.min(50, process.stdout.columns - 65 || 30), 30],
+      colWidths: [10, 15, Math.min(50, process.stdout.columns - 40 || 30), 20],
       style: {
         head: [],
         border: [],
@@ -945,7 +945,7 @@ async function displayComplexityReport(reportPath) {
   const terminalWidth = process.stdout.columns || 100; // Default to 100 if can't detect
 
   // Calculate dynamic column widths
-  const idWidth = 5;
+  const idWidth = 12;
   const titleWidth = Math.floor(terminalWidth * 0.25); // 25% of width
   const scoreWidth = 8;
   const subtasksWidth = 8;

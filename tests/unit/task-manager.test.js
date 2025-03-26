@@ -11,7 +11,8 @@ const mockReadFileSync = jest.fn();
 const mockExistsSync = jest.fn();
 const mockMkdirSync = jest.fn();
 const mockDirname = jest.fn();
-const mockCallClaude = jest.fn();
+const mockCallClaude = jest.fn().mockResolvedValue({ tasks: [] }); // Default resolved value
+const mockCallPerplexity = jest.fn().mockResolvedValue({ tasks: [] }); // Default resolved value
 const mockWriteJSON = jest.fn();
 const mockGenerateTaskFiles = jest.fn();
 const mockWriteFileSync = jest.fn();
@@ -36,11 +37,6 @@ jest.mock('path', () => ({
   join: jest.fn((dir, file) => `${dir}/${file}`)
 }));
 
-// Mock AI services
-jest.mock('../../scripts/modules/ai-services.js', () => ({
-  callClaude: mockCallClaude
-}));
-
 // Mock ui
 jest.mock('../../scripts/modules/ui.js', () => ({
   formatDependenciesWithStatus: mockFormatDependenciesWithStatus,
@@ -59,6 +55,12 @@ jest.mock('../../scripts/modules/utils.js', () => ({
   writeJSON: mockWriteJSON,
   readJSON: mockReadJSON,
   log: mockLog
+}));
+
+// Mock AI services - This is the correct way to mock the module
+jest.mock('../../scripts/modules/ai-services.js', () => ({
+  callClaude: mockCallClaude,
+  callPerplexity: mockCallPerplexity
 }));
 
 // Mock the task-manager module itself to control what gets imported
@@ -363,58 +365,137 @@ describe('Task Manager Module', () => {
     });
   });
 
-  // Skipped tests for analyzeTaskComplexity
-  describe.skip('analyzeTaskComplexity function', () => {
-    // These tests are skipped because they require complex mocking
-    // but document what should be tested
+  describe('analyzeTaskComplexity function', () => {
+    // Setup common test variables
+    const tasksPath = 'tasks/tasks.json';
+    const reportPath = 'scripts/task-complexity-report.json';
+    const thresholdScore = 5;
+    const baseOptions = {
+      file: tasksPath,
+      output: reportPath,
+      threshold: thresholdScore.toString(),
+      research: false // Default to false
+    };
+
+    // Sample response structure (simplified for these tests)
+    const sampleApiResponse = {
+      tasks: [
+        { id: 1, complexity: 3, subtaskCount: 2 },
+        { id: 2, complexity: 7, subtaskCount: 5 },
+        { id: 3, complexity: 9, subtaskCount: 8 }
+      ]
+    };
     
-    test('should handle valid JSON response from LLM', async () => {
-      // This test would verify that:
-      // 1. The function properly calls the AI model
-      // 2. It correctly parses a valid JSON response
-      // 3. It generates a properly formatted complexity report
-      // 4. The report includes all analyzed tasks with their complexity scores
-      expect(true).toBe(true);
+    beforeEach(() => {
+      jest.clearAllMocks();
+      
+      // Setup default mock implementations
+      mockReadJSON.mockReturnValue(JSON.parse(JSON.stringify(sampleTasks)));
+      mockWriteJSON.mockImplementation((path, data) => data); // Return data for chaining/assertions
+      // Just set the mock resolved values directly - no spies needed
+      mockCallClaude.mockResolvedValue(sampleApiResponse);
+      mockCallPerplexity.mockResolvedValue(sampleApiResponse);
+      
+      // Mock console methods to prevent test output clutter
+      jest.spyOn(console, 'log').mockImplementation(() => {});
+      jest.spyOn(console, 'error').mockImplementation(() => {});
     });
-    
-    test('should handle and fix malformed JSON with unterminated strings', async () => {
-      // This test would verify that:
-      // 1. The function can handle JSON with unterminated strings
-      // 2. It applies regex fixes to repair the malformed JSON
-      // 3. It still produces a valid report despite receiving bad JSON
-      expect(true).toBe(true);
+
+    afterEach(() => {
+      // Restore console methods
+      console.log.mockRestore();
+      console.error.mockRestore();
     });
-    
-    test('should handle missing tasks in the response', async () => {
-      // This test would verify that:
-      // 1. When the AI response is missing some tasks
-      // 2. The function detects the missing tasks
-      // 3. It attempts to analyze just those missing tasks
-      // 4. The final report includes all tasks that could be analyzed
-      expect(true).toBe(true);
+
+    test('should call Claude when research flag is false', async () => {
+      // Arrange
+      const options = { ...baseOptions, research: false };
+
+      // Act
+      await taskManager.analyzeTaskComplexity(options);
+
+      // Assert
+      expect(mockCallClaude).toHaveBeenCalled();
+      expect(mockCallPerplexity).not.toHaveBeenCalled();
+      expect(mockWriteJSON).toHaveBeenCalledWith(reportPath, expect.any(Object));
     });
-    
-    test('should use Perplexity research when research flag is set', async () => {
-      // This test would verify that:
-      // 1. The function uses Perplexity API when the research flag is set
-      // 2. It correctly formats the prompt for Perplexity
-      // 3. It properly handles the Perplexity response
-      expect(true).toBe(true);
+
+    test('should call Perplexity when research flag is true', async () => {
+      // Arrange
+      const options = { ...baseOptions, research: true };
+
+      // Act
+      await taskManager.analyzeTaskComplexity(options);
+
+      // Assert
+      expect(mockCallPerplexity).toHaveBeenCalled();
+      expect(mockCallClaude).not.toHaveBeenCalled();
+      expect(mockWriteJSON).toHaveBeenCalledWith(reportPath, expect.any(Object));
     });
-    
-    test('should fall back to Claude when Perplexity is unavailable', async () => {
-      // This test would verify that:
-      // 1. The function falls back to Claude when Perplexity API is not available
-      // 2. It handles the fallback gracefully
-      // 3. It still produces a valid report using Claude
-      expect(true).toBe(true);
+
+    test('should handle valid JSON response from LLM (Claude)', async () => {
+      // Arrange
+      const options = { ...baseOptions, research: false };
+
+      // Act
+      await taskManager.analyzeTaskComplexity(options);
+
+      // Assert
+      expect(mockReadJSON).toHaveBeenCalledWith(tasksPath);
+      expect(mockCallClaude).toHaveBeenCalled();
+      expect(mockCallPerplexity).not.toHaveBeenCalled();
+      expect(mockWriteJSON).toHaveBeenCalledWith(
+        reportPath,
+        expect.objectContaining({
+          tasks: expect.arrayContaining([
+            expect.objectContaining({ id: 1 })
+          ])
+        })
+      );
+      expect(mockLog).toHaveBeenCalledWith('info', expect.stringContaining('Successfully analyzed'));
     });
-    
-    test('should process multiple tasks in parallel', async () => {
-      // This test would verify that:
-      // 1. The function can analyze multiple tasks efficiently
-      // 2. It correctly aggregates the results
-      expect(true).toBe(true);
+
+    test('should handle and fix malformed JSON string response (Claude)', async () => {
+      // Arrange
+      const malformedJsonResponse = `{"tasks": [{"id": 1, "complexity": 3, "subtaskCount: 2}]}`;
+      mockCallClaude.mockResolvedValueOnce(malformedJsonResponse);
+      const options = { ...baseOptions, research: false };
+
+      // Act
+      await taskManager.analyzeTaskComplexity(options);
+
+      // Assert
+      expect(mockCallClaude).toHaveBeenCalled();
+      expect(mockCallPerplexity).not.toHaveBeenCalled();
+      expect(mockWriteJSON).toHaveBeenCalled();
+      expect(mockLog).toHaveBeenCalledWith('warn', expect.stringContaining('Malformed JSON'));
+    });
+
+    test('should handle missing tasks in the response (Claude)', async () => {
+      // Arrange
+      const incompleteResponse = { tasks: [sampleApiResponse.tasks[0]] };
+      mockCallClaude.mockResolvedValueOnce(incompleteResponse);
+      const missingTaskResponse = { tasks: [sampleApiResponse.tasks[1], sampleApiResponse.tasks[2]] };
+      mockCallClaude.mockResolvedValueOnce(missingTaskResponse);
+
+      const options = { ...baseOptions, research: false };
+
+      // Act
+      await taskManager.analyzeTaskComplexity(options);
+
+      // Assert
+      expect(mockCallClaude).toHaveBeenCalledTimes(2);
+      expect(mockCallPerplexity).not.toHaveBeenCalled();
+      expect(mockWriteJSON).toHaveBeenCalledWith(
+        reportPath,
+        expect.objectContaining({
+          tasks: expect.arrayContaining([
+            expect.objectContaining({ id: 1 }),
+            expect.objectContaining({ id: 2 }),
+            expect.objectContaining({ id: 3 })
+          ])
+        })
+      );
     });
   });
 
