@@ -1,6 +1,6 @@
 # Task ID: 31
 # Title: Add Config Flag Support to task-master init Command
-# Status: pending
+# Status: done
 # Dependencies: None
 # Priority: low
 # Description: Enhance the 'task-master init' command to accept configuration flags that allow users to bypass the interactive CLI questions and directly provide configuration values.

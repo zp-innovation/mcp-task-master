@@ -1,6 +1,6 @@
 # Task ID: 30
 # Title: Enhance parse-prd Command to Support Default PRD Path
-# Status: pending
+# Status: done
 # Dependencies: None
 # Priority: medium
 # Description: Modify the parse-prd command to automatically use a default PRD path when no path is explicitly provided, improving user experience by reducing the need for manual path specification.
