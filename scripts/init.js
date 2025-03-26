@@ -30,14 +30,29 @@ program
   .version('1.0.0')  // Will be replaced by prepare-package script
   .option('-y, --yes', 'Skip prompts and use default values')
   .option('-n, --name <name>', 'Project name')
+  .option('-my_name <name>', 'Project name (alias for --name)')
   .option('-d, --description <description>', 'Project description')
+  .option('-my_description <description>', 'Project description (alias for --description)')
   .option('-v, --version <version>', 'Project version')
+  .option('-my_version <version>', 'Project version (alias for --version)')
+  .option('--my_name <name>', 'Project name (alias for --name)')
   .option('-a, --author <author>', 'Author name')
   .option('--skip-install', 'Skip installing dependencies')
   .option('--dry-run', 'Show what would be done without making changes')
   .parse(process.argv);
 
 const options = program.opts();
+
+// Map custom aliases to standard options
+if (options.my_name && !options.name) {
+  options.name = options.my_name;
+}
+if (options.my_description && !options.description) {
+  options.description = options.my_description;
+}
+if (options.my_version && !options.version) {
+  options.version = options.my_version;
+}
 
 // Define log levels
 const LOG_LEVELS = {

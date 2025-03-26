@@ -301,8 +301,8 @@ function detectCamelCaseFlags(args) {
     if (arg.startsWith('--')) {
       const flagName = arg.split('=')[0].slice(2); // Remove -- and anything after =
       
-      // Skip if it's a single word (no hyphens) or already in kebab-case
-      if (!flagName.includes('-')) {
+      // Skip single-word flags - they can't be camelCase
+      if (!flagName.includes('-') && !/[A-Z]/.test(flagName)) {
         continue;
       }
       

@@ -562,6 +562,29 @@ function registerCommands(programInstance) {
       }
     });
     
+  // init command (documentation only, implementation is in init.js)
+  programInstance
+    .command('init')
+    .description('Initialize a new project with Task Master structure')
+    .option('-n, --name <name>', 'Project name')
+    .option('-my_name <name>', 'Project name (alias for --name)')
+    .option('--my_name <name>', 'Project name (alias for --name)')
+    .option('-d, --description <description>', 'Project description')
+    .option('-my_description <description>', 'Project description (alias for --description)')
+    .option('-v, --version <version>', 'Project version')
+    .option('-my_version <version>', 'Project version (alias for --version)')
+    .option('-a, --author <author>', 'Author name')
+    .option('-y, --yes', 'Skip prompts and use default values')
+    .option('--skip-install', 'Skip installing dependencies')
+    .action(() => {
+      console.log(chalk.yellow('The init command must be run as a standalone command: task-master init'));
+      console.log(chalk.cyan('Example usage:'));
+      console.log(chalk.white('  task-master init -n "My Project" -d "Project description"'));
+      console.log(chalk.white('  task-master init -my_name "My Project" -my_description "Project description"'));
+      console.log(chalk.white('  task-master init -y'));
+      process.exit(0);
+    });
+    
   // Add more commands as needed...
   
   return programInstance;
