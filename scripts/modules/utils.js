@@ -300,9 +300,14 @@ function detectCamelCaseFlags(args) {
   for (const arg of args) {
     if (arg.startsWith('--')) {
       const flagName = arg.split('=')[0].slice(2); // Remove -- and anything after =
-      // Only test for uppercase letters in the flag name
-      if (/[A-Z]/.test(flagName)) {
-        // Prevent adding duplicate flags or cases where kebab would be same as original
+      
+      // Skip single-word flags - they can't be camelCase
+      if (!flagName.includes('-') && !/[A-Z]/.test(flagName)) {
+        continue;
+      }
+      
+      // Check for camelCase pattern (lowercase followed by uppercase)
+      if (/[a-z][A-Z]/.test(flagName)) {
         const kebabVersion = toKebabCase(flagName);
         if (kebabVersion !== flagName) {
           camelCaseFlags.push({ 

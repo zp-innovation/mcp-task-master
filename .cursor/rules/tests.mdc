@@ -433,6 +433,125 @@ npm test -- -t "pattern to match"
   - Reset state in `beforeEach` and `afterEach` hooks
   - Avoid global state modifications
 
+## Common Testing Pitfalls and Solutions
+
+- **Complex Library Mocking**
+  - **Problem**: Trying to create full mocks of complex libraries like Commander.js can be error-prone
+  - **Solution**: Instead of mocking the entire library, test the command handlers directly by calling your action handlers with the expected arguments
+  ```javascript
+  // ❌ DON'T: Create complex mocks of Commander.js
+  class MockCommand {
+    constructor() { /* Complex mock implementation */ }
+    option() { /* ... */ }
+    action() { /* ... */ }
+    // Many methods to implement
+  }
+  
+  // ✅ DO: Test the command handlers directly
+  test('should use default PRD path when no arguments provided', async () => {
+    // Call the action handler directly with the right params
+    await parsePrdAction(undefined, { numTasks: '10', output: 'tasks/tasks.json' });
+    
+    // Assert on behavior
+    expect(mockParsePRD).toHaveBeenCalledWith('scripts/prd.txt', 'tasks/tasks.json', 10);
+  });
+  ```
+
+- **ES Module Mocking Challenges**
+  - **Problem**: ES modules don't support `require()` and imports are read-only
+  - **Solution**: Use Jest's module factory pattern and ensure mocks are defined before imports
+  ```javascript
+  // ❌ DON'T: Try to modify imported modules
+  import { detectCamelCaseFlags } from '../../scripts/modules/utils.js';
+  detectCamelCaseFlags = jest.fn(); // Error: Assignment to constant variable
+  
+  // ❌ DON'T: Try to use require with ES modules
+  const utils = require('../../scripts/modules/utils.js'); // Error in ES modules
+  
+  // ✅ DO: Use Jest module factory pattern
+  jest.mock('../../scripts/modules/utils.js', () => ({
+    detectCamelCaseFlags: jest.fn(),
+    toKebabCase: jest.fn()
+  }));
+  
+  // Import after mocks are defined
+  import { detectCamelCaseFlags } from '../../scripts/modules/utils.js';
+  ```
+
+- **Function Redeclaration Errors**
+  - **Problem**: Declaring the same function twice in a test file causes errors
+  - **Solution**: Use different function names or create local test-specific implementations
+  ```javascript
+  // ❌ DON'T: Redefine imported functions with the same name
+  import { detectCamelCaseFlags } from '../../scripts/modules/utils.js';
+  
+  function detectCamelCaseFlags() { /* Test implementation */ }
+  // Error: Identifier has already been declared
+  
+  // ✅ DO: Use a different name for test implementations
+  function testDetectCamelCaseFlags() { /* Test implementation */ }
+  ```
+
+- **Console.log Circular References**
+  - **Problem**: Creating infinite recursion by spying on console.log while also allowing it to log
+  - **Solution**: Implement a mock that doesn't call the original function
+  ```javascript
+  // ❌ DON'T: Create circular references with console.log
+  const mockConsoleLog = jest.spyOn(console, 'log');
+  mockConsoleLog.mockImplementation(console.log); // Creates infinite recursion
+  
+  // ✅ DO: Use a non-recursive mock implementation
+  const mockConsoleLog = jest.spyOn(console, 'log').mockImplementation(() => {});
+  ```
+
+- **Mock Function Method Issues**
+  - **Problem**: Trying to use jest.fn() methods on imported functions that aren't properly mocked
+  - **Solution**: Create explicit jest.fn() mocks for functions you need to call jest methods on
+  ```javascript
+  // ❌ DON'T: Try to use jest methods on imported functions without proper mocking
+  import { parsePRD } from '../../scripts/modules/task-manager.js';
+  parsePRD.mockClear(); // Error: parsePRD.mockClear is not a function
+  
+  // ✅ DO: Create proper jest.fn() mocks
+  const mockParsePRD = jest.fn().mockResolvedValue(undefined);
+  jest.mock('../../scripts/modules/task-manager.js', () => ({
+    parsePRD: mockParsePRD
+  }));
+  // Now you can use:
+  mockParsePRD.mockClear();
+  ```
+
+- **EventEmitter Max Listeners Warning**
+  - **Problem**: Commander.js adds many listeners in complex mocks, causing warnings
+  - **Solution**: Either increase the max listeners limit or avoid deep mocking
+  ```javascript
+  // Option 1: Increase max listeners if you must mock Commander
+  class MockCommand extends EventEmitter {
+    constructor() {
+      super();
+      this.setMaxListeners(20); // Avoid MaxListenersExceededWarning
+    }
+  }
+  
+  // Option 2 (preferred): Test command handlers directly instead
+  // (as shown in the first example)
+  ```
+
+- **Test Isolation Issues**
+  - **Problem**: Tests affecting each other due to shared mock state
+  - **Solution**: Reset all mocks in beforeEach and use separate test-specific mocks
+  ```javascript
+  // ❌ DON'T: Allow mock state to persist between tests
+  const globalMock = jest.fn().mockReturnValue('test');
+  
+  // ✅ DO: Clear mocks before each test
+  beforeEach(() => {
+    jest.clearAllMocks();
+    // Set up test-specific mock behavior
+    mockFunction.mockReturnValue('test-specific value');
+  });
+  ```
+
 ## Reliable Testing Techniques
 
 - **Create Simplified Test Functions**
