@@ -158,6 +158,9 @@ function copyTemplateFile(templateName, targetPath, replacements = {}) {
     case 'README-task-master.md':
       sourcePath = path.join(__dirname, '..', 'README-task-master.md');
       break;
+    case 'windsurfrules':
+      sourcePath = path.join(__dirname, '..', 'assets', '.windsurfrules');
+      break;
     default:
       // For other files like env.example, gitignore, etc. that don't have direct equivalents
       sourcePath = path.join(__dirname, '..', 'assets', templateName);
@@ -202,6 +205,20 @@ function copyTemplateFile(templateName, targetPath, replacements = {}) {
       } else {
         log('info', `No new content to add to ${targetPath}`);
       }
+      return;
+    }
+    
+    // Handle .windsurfrules - append the entire content
+    if (filename === '.windsurfrules') {
+      log('info', `${targetPath} already exists, appending content instead of overwriting...`);
+      const existingContent = fs.readFileSync(targetPath, 'utf8');
+      
+      // Add a separator comment before appending our content
+      const updatedContent = existingContent.trim() + 
+        '\n\n# Added by Task Master - Development Workflow Rules\n\n' + 
+        content;
+      fs.writeFileSync(targetPath, updatedContent);
+      log('success', `Updated ${targetPath} with additional rules`);
       return;
     }
     
@@ -495,6 +512,9 @@ function createProjectStructure(projectName, projectDescription, projectVersion,
   
   // Copy self_improve.mdc
   copyTemplateFile('self_improve.mdc', path.join(targetDir, '.cursor', 'rules', 'self_improve.mdc'));
+  
+  // Copy .windsurfrules
+  copyTemplateFile('windsurfrules', path.join(targetDir, '.windsurfrules'));
   
   // Copy scripts/dev.js
   copyTemplateFile('dev.js', path.join(targetDir, 'scripts', 'dev.js'));
