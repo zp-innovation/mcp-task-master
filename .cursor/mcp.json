@@ -1,0 +1,10 @@
+{
+    "mcpServers": {
+        "taskmaster-ai": {
+            "command": "node",
+            "args": [
+                "./mcp-server/server.js"
+            ]
+        }
+    }
+}
