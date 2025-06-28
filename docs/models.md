@@ -144,11 +144,10 @@
 
 ## Deepseek Models
 
-Deepseek provides OpenAI-compatible API with the following models:
+Deepseek provides OpenAI-compatible API with the following model:
 
 | Model | Description | Context Window | Best For |
 |-------|-------------|---------------|----------|
-| `deepseek/deepseek-chat` | General purpose chat model | 64K | General chat, coding assistance |
 | `deepseek/deepseek-reasoner` | Advanced reasoning model with chain-of-thought | 64K | Complex reasoning, math problems |
 
 ### Usage
@@ -162,7 +161,7 @@ To use Deepseek models, you need to:
    ```
 3. Set your preferred model:
    ```
-   Change the main model to deepseek/deepseek-chat
+   Change the main model to deepseek/deepseek-reasoner
    ```
    or
    ```
@@ -178,7 +177,6 @@ To use Deepseek models, you need to:
 ### Pricing
 
 Pricing is based on input and output tokens:
-- deepseek-chat: ¥2/million input tokens, ¥8/million output tokens
 - deepseek-reasoner: ¥4/million input tokens, ¥16/million output tokens
 
 Off-peak discounts available from 00:30-08:30 Beijing time.

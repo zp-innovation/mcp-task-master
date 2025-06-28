@@ -662,16 +662,6 @@
 	],
 	"deepseek": [
 		{
-			"id": "deepseek-chat",
-			"swe_score": 0.54,
-			"cost_per_1m_tokens": {
-				"input": 2.0,
-				"output": 8.0
-			},
-			"allowed_roles": ["main", "fallback"],
-			"max_tokens": 8192
-		},
-		{
 			"id": "deepseek-reasoner",
 			"swe_score": 0.58,
 			"cost_per_1m_tokens": {
