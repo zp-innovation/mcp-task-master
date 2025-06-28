@@ -10,7 +10,9 @@ export const VALIDATED_PROVIDERS = [
 	'google',
 	'perplexity',
 	'xai',
-	'mistral'
+	'mistral',
+	'deepseek',
+	'doubao'
 ];
 
 // Custom providers object for easy named access

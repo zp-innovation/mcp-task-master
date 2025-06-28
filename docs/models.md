@@ -141,3 +141,83 @@
 | openrouter  | thudm/glm-4-32b:free                           | —         | 0          | 0           |
 | claude-code | opus                                           | 0.725     | 0          | 0           |
 | claude-code | sonnet                                         | 0.727     | 0          | 0           |
+
+## Deepseek Models
+
+Deepseek provides OpenAI-compatible API with the following models:
+
+| Model | Description | Context Window | Best For |
+|-------|-------------|---------------|----------|
+| `deepseek/deepseek-chat` | General purpose chat model | 64K | General chat, coding assistance |
+| `deepseek/deepseek-reasoner` | Advanced reasoning model with chain-of-thought | 64K | Complex reasoning, math problems |
+
+### Usage
+
+To use Deepseek models, you need to:
+
+1. Obtain a Deepseek API key from [Deepseek Platform](https://platform.deepseek.com/)
+2. Add your API key to the MCP configuration:
+   ```json
+   "DEEPSEEK_API_KEY": "your-api-key-here"
+   ```
+3. Set your preferred model:
+   ```
+   Change the main model to deepseek/deepseek-chat
+   ```
+   or
+   ```
+   Change the research model to deepseek/deepseek-reasoner
+   ```
+
+### Features
+
+- **JSON Output**: Force structured JSON responses by setting `response_format` to `{"type": "json_object"}`
+- **Function Calling**: Similar to OpenAI's function calling
+- **Context Caching**: Automatic caching of repeated context to reduce token costs
+
+### Pricing
+
+Pricing is based on input and output tokens:
+- deepseek-chat: ¥2/million input tokens, ¥8/million output tokens
+- deepseek-reasoner: ¥4/million input tokens, ¥16/million output tokens
+
+Off-peak discounts available from 00:30-08:30 Beijing time.
+
+## Doubao (火山方舟) Models
+
+Doubao (火山方舟) provides OpenAI-compatible API with the following models:
+
+| Model | Description | Context Window | Best For |
+|-------|-------------|---------------|----------|
+| `doubao/doubao-seed-1.6-250615` | Latest Doubao seed model | 8K | General chat, coding, reasoning |
+| `doubao/ep-20250629060919-64pkc` | Endpoint model (example) | 8K | General chat, coding, reasoning |
+
+### Usage
+
+To use Doubao models, you need to:
+
+1. Obtain an ARK API key from [火山方舟控制台](https://ark.volcengine.com/)
+2. Add your API key to the MCP configuration:
+   ```json
+   "ARK_API_KEY": "your-api-key-here"
+   ```
+3. Set your preferred model:
+   ```
+   Change the main model to doubao/doubao-seed-1.6-250615
+   ```
+   or
+   ```
+   Change the research model to doubao/doubao-seed-1.6-250615
+   ```
+
+### Features
+
+- **OpenAI Compatible**: Uses the same API format as OpenAI
+- **Multimodal Support**: Can process both text and images
+- **Function Calling**: Supports OpenAI-style function calling
+- **Application Layer Encryption**: Optional encryption for secure inference
+
+### API Details
+
+- **Base URL**: `https://ark.cn-beijing.volces.com/api/v3`
+- **Authentication**: Bearer Token (`Authorization: Bearer $ARK_API_KEY`)

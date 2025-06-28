@@ -496,6 +496,21 @@ function getParametersForRole(role, explicitRoot = null) {
  */
 function isApiKeySet(providerName, session = null, projectRoot = null) {
 	// Define the expected environment variable name for each provider
+	const API_KEY_ENV_VAR_MAP = {
+		openai: 'OPENAI_API_KEY',
+		anthropic: 'ANTHROPIC_API_KEY',
+		google: 'GOOGLE_API_KEY',
+		perplexity: 'PERPLEXITY_API_KEY',
+		mistral: 'MISTRAL_API_KEY',
+		azure: 'AZURE_OPENAI_API_KEY',
+		openrouter: 'OPENROUTER_API_KEY',
+		xai: 'XAI_API_KEY',
+		vertex: 'GOOGLE_API_KEY', // Vertex uses the same key as Google
+		'claude-code': 'CLAUDE_CODE_API_KEY', // Not actually used, but included for consistency
+		bedrock: 'AWS_ACCESS_KEY_ID', // Bedrock uses AWS credentials
+		deepseek: 'DEEPSEEK_API_KEY',
+		doubao: 'ARK_API_KEY'
+	};
 
 	// Providers that don't require API keys for authentication
 	const providersWithoutApiKeys = [
@@ -512,28 +527,13 @@ function isApiKeySet(providerName, session = null, projectRoot = null) {
 		return true; // No API key needed
 	}
 
-	const keyMap = {
-		openai: 'OPENAI_API_KEY',
-		anthropic: 'ANTHROPIC_API_KEY',
-		google: 'GOOGLE_API_KEY',
-		perplexity: 'PERPLEXITY_API_KEY',
-		mistral: 'MISTRAL_API_KEY',
-		azure: 'AZURE_OPENAI_API_KEY',
-		openrouter: 'OPENROUTER_API_KEY',
-		xai: 'XAI_API_KEY',
-		vertex: 'GOOGLE_API_KEY', // Vertex uses the same key as Google
-		'claude-code': 'CLAUDE_CODE_API_KEY', // Not actually used, but included for consistency
-		bedrock: 'AWS_ACCESS_KEY_ID' // Bedrock uses AWS credentials
-		// Add other providers as needed
-	};
-
 	const providerKey = providerName?.toLowerCase();
-	if (!providerKey || !keyMap[providerKey]) {
+	if (!providerKey || !API_KEY_ENV_VAR_MAP[providerKey]) {
 		log('warn', `Unknown provider name: ${providerName} in isApiKeySet check.`);
 		return false;
 	}
 
-	const envVarName = keyMap[providerKey];
+	const envVarName = API_KEY_ENV_VAR_MAP[providerKey];
 	const apiKeyValue = resolveEnvVariable(envVarName, session, projectRoot);
 
 	// Check if the key exists, is not empty, and is not a placeholder
@@ -625,6 +625,14 @@ function getMcpApiKeyStatus(providerName, projectRoot = null) {
 			case 'bedrock':
 				apiKeyToCheck = mcpEnv.AWS_ACCESS_KEY_ID; // Bedrock uses AWS credentials
 				placeholderValue = 'YOUR_AWS_ACCESS_KEY_ID_HERE';
+				break;
+			case 'deepseek':
+				apiKeyToCheck = mcpEnv.DEEPSEEK_API_KEY;
+				placeholderValue = 'YOUR_DEEPSEEK_API_KEY_HERE';
+				break;
+			case 'doubao':
+				apiKeyToCheck = mcpEnv.ARK_API_KEY;
+				placeholderValue = 'YOUR_ARK_API_KEY_HERE';
 				break;
 			default:
 				return false; // Unknown provider

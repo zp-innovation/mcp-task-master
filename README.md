@@ -85,7 +85,9 @@ MCP (Model Control Protocol) lets you run Task Master directly from your editor.
         "OPENROUTER_API_KEY": "YOUR_OPENROUTER_KEY_HERE",
         "XAI_API_KEY": "YOUR_XAI_KEY_HERE",
         "AZURE_OPENAI_API_KEY": "YOUR_AZURE_KEY_HERE",
-        "OLLAMA_API_KEY": "YOUR_OLLAMA_API_KEY_HERE"
+        "OLLAMA_API_KEY": "YOUR_OLLAMA_API_KEY_HERE",
+        "DEEPSEEK_API_KEY": "YOUR_DEEPSEEK_API_KEY_HERE",
+        "ARK_API_KEY": "YOUR_ARK_API_KEY_HERE"
       }
     }
   }
@@ -96,7 +98,7 @@ MCP (Model Control Protocol) lets you run Task Master directly from your editor.
 
 > **Note**: If you see `0 tools enabled` in the MCP settings, try removing the `--package=task-master-ai` flag from `args`.
 
-###### VS Code (`servers` + `type`)
+###### VS Code (`servers` + `type`)
 
 ```json
 {
@@ -112,7 +114,9 @@ MCP (Model Control Protocol) lets you run Task Master directly from your editor.
         "MISTRAL_API_KEY": "YOUR_MISTRAL_KEY_HERE",
         "OPENROUTER_API_KEY": "YOUR_OPENROUTER_KEY_HERE",
         "XAI_API_KEY": "YOUR_XAI_KEY_HERE",
-        "AZURE_OPENAI_API_KEY": "YOUR_AZURE_KEY_HERE"
+        "AZURE_OPENAI_API_KEY": "YOUR_AZURE_KEY_HERE",
+        "DEEPSEEK_API_KEY": "YOUR_DEEPSEEK_API_KEY_HERE",
+        "ARK_API_KEY": "YOUR_ARK_API_KEY_HERE"
       },
       "type": "stdio"
     }

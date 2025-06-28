@@ -14,3 +14,5 @@ export { BedrockAIProvider } from './bedrock.js';
 export { AzureProvider } from './azure.js';
 export { VertexAIProvider } from './google-vertex.js';
 export { ClaudeCodeProvider } from './claude-code.js';
+export { DeepseekAIProvider } from './deepseek.js';
+export { DoubaoAIProvider } from './doubao.js';
